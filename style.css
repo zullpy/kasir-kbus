@@ -1,0 +1,419 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --navy-deep: #16294f;
+    --blue-mid: #3f7fc4;
+    --blue-soft: #a9cdec;
+    --sky-white: #eef5fc;
+    --gold: #f2b705;
+    --gold-deep: #d69800;
+    --ink: #16294f;
+    --glass: rgba(255, 255, 255, 0.46);
+    --glass-strong: rgba(255, 255, 255, 0.72);
+    --shadow-key: 0 14px 0 rgba(22, 41, 79, 0.28);
+    --shadow-key-active: 0 6px 0 rgba(22, 41, 79, 0.28);
+    --radius-card: 26px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+}
+
+body {
+    background: url('assets/Picture1.png') center center / cover no-repeat fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* soft vignette so cards stay legible over the photo background */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(238, 245, 252, 0.15) 0%, rgba(22, 41, 79, 0.18) 100%);
+    pointer-events: none;
+}
+
+.kiosk {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 880px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.brand img {
+    width: min(360px, 70vw);
+    filter: drop-shadow(0 12px 18px rgba(16, 30, 60, 0.35));
+}
+
+.brand .tagline {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--navy-deep);
+    background: var(--glass-strong);
+    padding: 6px 18px;
+    border-radius: 999px;
+    margin-top: -6px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.select-heading {
+    text-align: center;
+    margin: 26px 0 30px;
+}
+
+.select-heading h1 {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: clamp(22px, 3.6vw, 30px);
+    margin: 0 0 6px;
+    color: var(--navy-deep);
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
+}
+
+.select-heading p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--navy-deep);
+    opacity: 0.85;
+}
+
+.role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    width: 100%;
+}
+
+@media (max-width: 560px) {
+    .role-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.role-key {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    background: var(--glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: var(--radius-card);
+    padding: 30px 26px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: var(--shadow-key);
+    transform: translateY(0);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.role-key::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 46%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+    pointer-events: none;
+}
+
+.role-key:hover {
+    background: var(--glass-strong);
+}
+
+.role-key:active,
+.role-key.is-pressed {
+    transform: translateY(8px);
+    box-shadow: var(--shadow-key-active);
+}
+
+.role-key .key-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, var(--blue-mid), var(--navy-deep));
+    color: var(--sky-white);
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.role-key .key-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.role-key h2 {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 22px;
+    margin: 0;
+    color: var(--navy-deep);
+}
+
+.role-key p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--navy-deep);
+    opacity: 0.78;
+}
+
+.role-key .key-cta {
+    margin-top: auto;
+    align-self: flex-end;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 6px;
+}
+
+.role-key .key-cta svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+}
+
+.role-key:hover .key-cta svg {
+    transform: translateX(4px);
+}
+
+.role-key.admin .key-icon {
+    background: linear-gradient(145deg, var(--gold), var(--gold-deep));
+    color: var(--navy-deep);
+}
+
+.footnote {
+    margin-top: 30px;
+    font-size: 12.5px;
+    color: var(--navy-deep);
+    background: var(--glass-strong);
+    padding: 5px 14px;
+    border-radius: 999px;
+    opacity: 0.9;
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(14, 24, 46, 0.55);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    z-index: 50;
+}
+
+.modal-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--sky-white);
+    border-radius: 22px;
+    padding: 28px 26px 26px;
+    box-shadow: 0 24px 50px rgba(10, 20, 40, 0.35);
+    transform: translateY(14px) scale(0.97);
+    transition: transform 0.2s ease;
+    position: relative;
+}
+
+.modal-overlay.is-open .modal-card {
+    transform: translateY(0) scale(1);
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: rgba(22, 41, 79, 0.08);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--navy-deep);
+}
+
+.modal-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--blue-mid);
+    margin-bottom: 6px;
+}
+
+.modal-role-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--blue-mid);
+}
+
+.modal-card[data-role="admin"] .modal-role-badge,
+.modal-card[data-role="admin"] .modal-role-badge .dot {
+    color: var(--gold-deep);
+    background: var(--gold-deep);
+}
+
+.modal-card h3 {
+    font-family: 'Baloo 2', sans-serif;
+    margin: 0 0 4px;
+    font-size: 21px;
+    color: var(--navy-deep);
+}
+
+.modal-card .modal-sub {
+    margin: 0 0 20px;
+    font-size: 13.5px;
+    color: var(--navy-deep);
+    opacity: 0.7;
+}
+
+.field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-deep);
+    margin-bottom: 6px;
+}
+
+.pass-wrap {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.pass-wrap input {
+    width: 100%;
+    padding: 13px 44px 13px 14px;
+    border-radius: 12px;
+    border: 1.5px solid #cddbea;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    background: #fff;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.pass-wrap input:focus {
+    border-color: var(--blue-mid);
+}
+
+.pass-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--navy-deep);
+    opacity: 0.55;
+    display: flex;
+}
+
+.error-msg {
+    min-height: 18px;
+    font-size: 12.5px;
+    color: #c0392b;
+    margin: 4px 0 10px;
+}
+
+.modal-submit {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 13px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--sky-white);
+    background: linear-gradient(135deg, var(--blue-mid), var(--navy-deep));
+    cursor: pointer;
+    box-shadow: 0 8px 0 rgba(22, 41, 79, 0.28);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.modal-submit:active {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 rgba(22, 41, 79, 0.28);
+}
+
+.modal-card[data-role="admin"] .modal-submit {
+    color: var(--navy-deep);
+    background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+    box-shadow: 0 8px 0 rgba(214, 152, 0, 0.35);
+}
+
+.modal-card[data-role="admin"] .modal-submit:active {
+    box-shadow: 0 2px 0 rgba(214, 152, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .role-key,
+    .modal-overlay,
+    .modal-card,
+    .modal-submit,
+    .key-cta svg {
+        transition: none !important;
+    }
+}
+
+:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+}
