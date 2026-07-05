@@ -1,10 +1,8 @@
 <?php
 // Halaman Laporan Harian
-// CATATAN PENTING: sama seperti riwayat-transaksi.php, query di bawah mengasumsikan struktur
-// standar kasir (tabel `transaksi` & `detail_transaksi`) dan variabel koneksi $koneksi_kasir.
-// Sesuaikan nama tabel/kolom/variabel koneksi jika berbeda di project Anda.
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+require_once '../../includes/auth_guard.php';
 require_once '../../database/koneksi.php';
 
 $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
@@ -43,7 +41,7 @@ if ($jumlahTransaksi > 0) {
     $resultProduk = mysqli_query(
         $koneksi_kasir,
         "SELECT nama_barang, SUM(qty) AS total_qty, SUM(subtotal) AS total_omzet
-         FROM detail_transaksi
+         FROM transaksi_detail
          WHERE id_transaksi IN ($ids)
          GROUP BY nama_barang
          ORDER BY total_qty DESC
@@ -74,7 +72,7 @@ function formatRupiahPhp2($n)
 
 <body>
     <div class="pos-root">
-        <?php require '../partials/sidebar.php'; ?>
+        <?php require '../../partials/sidebar.php'; ?>
         <div class="pos-main">
             <main class="page-main">
                 <div class="page-header">

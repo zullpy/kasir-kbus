@@ -1,29 +1,9 @@
 <?php
-// Menghubungkan ke database db_draft_barang dan db_kasir
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// Di bagian atas index.php, ambil data produk
+require_once '../includes/auth_guard.php';
 require_once '../database/koneksi.php';
-
-$query = "SELECT 
-    id_barang as id,
-    nama_barang as name,
-    harga_jual as price,
-    stok_akhir as stock,
-    kategori as category
-FROM barang ORDER BY nama_barang ASC";
-
-$result = mysqli_query($koneksi_draft, $query);
-$products = [];
-while ($row = mysqli_fetch_assoc($result)) {
-    $products[] = $row;
-}
 ?>
-
-<script>
-    window.PRODUCTS = <?php echo json_encode($products); ?>;
-</script>
-
 <!DOCTYPE html>
 <html lang="id">
 
@@ -46,6 +26,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="toolbar">
                         <div class="search-box">
                             <input type="text" id="searchInput" placeholder="Cari barang...">
+                        </div>
+                        <div class="chips" id="modeChips">
+                            <button type="button" class="chip active" data-mode="semua">Semua</button>
+                            <button type="button" class="chip" data-mode="grosir">Grosir</button>
+                            <button type="button" class="chip" data-mode="eceran">Eceran</button>
                         </div>
                     </div>
                     <div class="product-grid" id="productGrid"></div>

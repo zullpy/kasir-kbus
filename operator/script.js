@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const productGrid = document.getElementById('productGrid');
     const searchInput = document.getElementById('searchInput');
     const categoryChips = document.getElementById('categoryChips');
+    const modeChips = document.getElementById('modeChips');
     const receiptLines = document.getElementById('receiptLines');
     const subtotalText = document.getElementById('subtotalText');
     const discountInput = document.getElementById('discountInput');
@@ -15,9 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const posDate = document.getElementById('posDate');
 
     // State
-    let products = window.PRODUCTS || [];
+    let rawProducts = window.PRODUCTS || []; // data mentah dari API (per nama_barang)
+    let displayItems = [];                   // hasil turunan sesuai mode aktif (grosir/eceran/semua)
     let cart = [];
     let activeCategory = 'Semua';
+    let activeMode = 'semua'; // 'semua' | 'grosir' | 'eceran'
     let searchQuery = '';
 
     // Helpers
@@ -53,9 +56,57 @@ document.addEventListener('DOMContentLoaded', () => {
         input.value = Number(value).toLocaleString('id-ID');
     }
 
+    // Bangun daftar item tampilan (varian grosir & eceran) dari data mentah produk
+    // sesuai mode aktif. Satu barang bisa menghasilkan 1 atau 2 item tampilan.
+    function buildDisplayItems() {
+        const items = [];
+
+        rawProducts.forEach((p) => {
+            // Stok grosir & eceran independen (masing-masing dari tabel stok_barang
+            // dan stok_barang_eceran), tidak ada konversi antar satuan di sini.
+            const hasEceran = Number(p.price_eceran) > 0 && !!p.satuan_eceran;
+
+            const grosirItem = {
+                uid: 'g' + p.id,
+                baseId: p.id,
+                mode: 'grosir',
+                name: p.name,
+                price: Number(p.price),
+                stock: Number(p.stock),
+                satuan: p.satuan || 'pcs',
+                category: p.category,
+            };
+
+            const eceranItem = hasEceran ? {
+                uid: 'e' + p.id,
+                baseId: p.id,
+                mode: 'eceran',
+                name: p.name,
+                price: Number(p.price_eceran),
+                stock: Number(p.stock_eceran) || 0,
+                satuan: p.satuan_eceran,
+                category: p.category,
+            } : null;
+
+            if (activeMode === 'grosir') {
+                items.push(grosirItem);
+            } else if (activeMode === 'eceran') {
+                if (eceranItem) items.push(eceranItem);
+            } else {
+                // semua
+                items.push(grosirItem);
+                if (eceranItem) items.push(eceranItem);
+            }
+        });
+
+        return items;
+    }
+
     // Render produk
     function renderProducts() {
-        const filtered = products.filter((p) => {
+        displayItems = buildDisplayItems();
+
+        const filtered = displayItems.filter((p) => {
             const matchQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchCategory = activeCategory === 'Semua' || p.category === activeCategory;
             return matchQuery && matchCategory;
@@ -67,48 +118,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         productGrid.innerHTML = filtered.map((p) => `
-            <button class="product-card" data-id="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>
+            <button class="product-card" data-uid="${p.uid}" ${p.stock <= 0 ? 'disabled' : ''}>
+                <span class="pc-mode ${p.mode}">${p.mode === 'eceran' ? 'Eceran' : 'Grosir'}</span>
                 <span class="pc-name">${escapeHtml(p.name)}</span>
-                <span class="pc-price">${formatRupiah(p.price)}</span>
+                <span class="pc-price">${formatRupiah(p.price)} <small>/ ${escapeHtml(p.satuan)}</small></span>
                 <span class="pc-stock${p.stock <= 5 ? ' low' : ''}">
-                    ${p.stock <= 0 ? 'Stok habis' : 'Stok: ' + p.stock}
+                    ${p.stock <= 0 ? 'Stok habis' : 'Stok: ' + p.stock + ' ' + escapeHtml(p.satuan)}
                 </span>
             </button>
         `).join('');
     }
 
     // Keranjang
-    function addToCart(productId) {
-        const product = products.find((p) => p.id === productId);
-        if (!product || product.stock <= 0) return;
+    function addToCart(uid) {
+        const item = displayItems.find((p) => p.uid === uid);
+        if (!item || item.stock <= 0) return;
 
-        const existing = cart.find((it) => it.id === productId);
+        const existing = cart.find((it) => it.uid === uid);
         if (existing) {
-            if (existing.qty >= product.stock) return;
+            if (existing.qty >= item.stock) return;
             existing.qty += 1;
         } else {
-            cart.push({ id: product.id, name: product.name, price: product.price, qty: 1, stock: product.stock });
+            cart.push({
+                uid: item.uid,
+                baseId: item.baseId,
+                mode: item.mode,
+                name: item.name,
+                price: item.price,
+                satuan: item.satuan,
+                qty: 1,
+                stock: item.stock,
+            });
         }
         renderCart();
     }
 
-    function changeQty(productId, delta) {
-        const item = cart.find((it) => it.id === productId);
+    function changeQty(uid, delta) {
+        const item = cart.find((it) => it.uid === uid);
         if (!item) return;
 
         const next = item.qty + delta;
         if (next > item.stock) return;
 
         if (next <= 0) {
-            cart = cart.filter((it) => it.id !== productId);
+            cart = cart.filter((it) => it.uid !== uid);
         } else {
             item.qty = next;
         }
         renderCart();
     }
 
-    function removeFromCart(productId) {
-        cart = cart.filter((it) => it.id !== productId);
+    function removeFromCart(uid) {
+        cart = cart.filter((it) => it.uid !== uid);
         renderCart();
     }
 
@@ -117,20 +178,20 @@ document.addEventListener('DOMContentLoaded', () => {
             receiptLines.innerHTML = '<tr><td colspan="5" class="empty-note small">Belum ada barang di keranjang.</td></tr>';
         } else {
             receiptLines.innerHTML = cart.map((it, idx) => `
-                <tr class="line-item" data-id="${it.id}">
+                <tr class="line-item" data-uid="${it.uid}">
                     <td class="col-no">${idx + 1}</td>
-                    <td class="col-item">${escapeHtml(it.name)}</td>
+                    <td class="col-item">${escapeHtml(it.name)}${it.mode === 'eceran' ? ' <small>(ecr)</small>' : ''}</td>
                     <td class="col-qty">
                         <div class="qty-control">
-                            <button data-action="minus" data-id="${it.id}">&minus;</button>
+                            <button data-action="minus" data-uid="${it.uid}">&minus;</button>
                             <span>${it.qty}</span>
-                            <button data-action="plus" data-id="${it.id}">+</button>
+                            <button data-action="plus" data-uid="${it.uid}">+</button>
                         </div>
                     </td>
                     <td class="col-harga">${formatRupiah(it.price)}</td>
                     <td class="col-subtotal">
                         <span class="li-price">${formatRupiah(it.price * it.qty)}</span>
-                        <button class="li-remove" data-action="remove" data-id="${it.id}" aria-label="Hapus barang">&times;</button>
+                        <button class="li-remove" data-action="remove" data-uid="${it.uid}" aria-label="Hapus barang">&times;</button>
                     </td>
                 </tr>
             `).join('');
@@ -189,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function refreshProducts() {
         try {
             const res = await fetch('../api/get-products.php');
-            products = await res.json();
+            rawProducts = await res.json();
             renderProducts();
         } catch (err) {
             console.error('Gagal memuat ulang data produk:', err);
@@ -204,8 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const discPercent = Number(rawDisc) || 0;
 
         const payload = {
-            items: cart.map((it) => ({ id: it.id, qty: it.qty })),
-            discount_percent: discPercent, // Kirim PERSEN, nominal dihitung ulang di server (lebih aman)
+            items: cart.map((it) => ({
+                name: it.name,
+                qty: it.qty,
+                price: it.price,
+                satuan: it.satuan,
+                mode: it.mode,
+            })),
+            discount_percent: discPercent,
             cash: Number(cashInput.value.replace(/\./g, '')) || 0,
         };
 
@@ -254,20 +321,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Toggle mode Semua / Grosir / Eceran
+    if (modeChips) {
+        modeChips.addEventListener('click', (e) => {
+            const btn = e.target.closest('.chip');
+            if (!btn) return;
+            activeMode = btn.dataset.mode;
+            [...modeChips.children].forEach((c) => c.classList.toggle('active', c === btn));
+            renderProducts();
+        });
+    }
+
     productGrid.addEventListener('click', (e) => {
         const card = e.target.closest('.product-card');
         if (!card || card.disabled) return;
-        addToCart(Number(card.dataset.id));
+        addToCart(card.dataset.uid);
     });
 
     receiptLines.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
-        const id = Number(btn.dataset.id);
+        const uid = btn.dataset.uid;
         const action = btn.dataset.action;
-        if (action === 'remove') removeFromCart(id);
-        if (action === 'plus') changeQty(id, 1);
-        if (action === 'minus') changeQty(id, -1);
+        if (action === 'remove') removeFromCart(uid);
+        if (action === 'plus') changeQty(uid, 1);
+        if (action === 'minus') changeQty(uid, -1);
     });
 
     // Format input saat diketik lalu update total
@@ -283,8 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     payBtn.addEventListener('click', checkout);
 
-    // Init
-    // Di script.js, ganti bagian init dengan:
+    // Init: fetch produk dari API (stok db_mbg + harga db_draft_barang).
+    // refreshProducts() juga dipanggil setelah checkout berhasil agar stok update.
     async function init() {
         await refreshProducts();
         setDate();

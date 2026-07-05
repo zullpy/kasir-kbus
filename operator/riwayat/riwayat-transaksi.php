@@ -1,12 +1,8 @@
 <?php
 // Halaman Riwayat Transaksi
-// CATATAN PENTING: query di bawah mengasumsikan struktur standar kasir:
-//   tabel `transaksi`         : id_transaksi, tanggal, subtotal, diskon, total, cash, kembalian
-//   tabel `detail_transaksi`  : id_transaksi, id_barang, nama_barang, harga, qty, subtotal
-// dan koneksi database transaksi memakai variabel $koneksi_kasir (dari koneksi.php, db_kasir).
-// Sesuaikan nama tabel/kolom/variabel koneksi jika berbeda di project Anda.
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+require_once '../../includes/auth_guard.php';
 require_once '../../database/koneksi.php';
 
 $dariTanggal   = $_GET['dari'] ?? date('Y-m-d', strtotime('-6 days'));
@@ -67,7 +63,7 @@ function formatRupiahPhp($n)
 
 <body>
     <div class="pos-root">
-        <?php require '../partials/sidebar.php'; ?>
+        <?php require '../../partials/sidebar.php'; ?>
         <div class="pos-main">
             <main class="page-main">
                 <div class="page-header">
@@ -110,9 +106,10 @@ function formatRupiahPhp($n)
                                 </tr>
                             </thead>
                             <tbody>
+                                <?php $no = 1; ?>
                                 <?php foreach ($transaksiList as $trx): ?>
-                                    <tr class="trx-row" data-id="<?= (int) $trx['id_transaksi'] ?>">
-                                        <td>#<?= (int) $trx['id_transaksi'] ?></td>
+                                    <tr class="trx-row" data-id="<?= $no ?>">
+                                        <td>#<?= $no ?></td>
                                         <td><?= date('d M Y, H:i', strtotime($trx['tanggal'])) ?></td>
                                         <td class="num"><?= formatRupiahPhp($trx['subtotal']) ?></td>
                                         <td class="num"><?= formatRupiahPhp($trx['diskon']) ?></td>
@@ -120,7 +117,7 @@ function formatRupiahPhp($n)
                                         <td class="num"><?= formatRupiahPhp($trx['cash']) ?></td>
                                         <td class="num"><?= formatRupiahPhp($trx['kembalian']) ?></td>
                                     </tr>
-                                    <tr class="detail-row hidden" data-detail-for="<?= (int) $trx['id_transaksi'] ?>">
+                                    <tr class="detail-row hidden" data-detail-for="<?= $no ?>">
                                         <td colspan="7">
                                             <div class="detail-row-inner">
                                                 <?php if (empty($trx['items'])): ?>
@@ -139,6 +136,7 @@ function formatRupiahPhp($n)
                                             </div>
                                         </td>
                                     </tr>
+                                    <?php $no++; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>

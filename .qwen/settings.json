@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Agent(Explore)"
+      "Agent(Explore)",
+      "Bash(mysql *)"
     ]
-  }
+  },
+  "$version": 4
 }

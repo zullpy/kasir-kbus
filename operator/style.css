@@ -88,9 +88,88 @@ body {
 
 .pos-date {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: rgba(255, 255, 255, .75);
+    font-size: 11px;
+    color: rgba(255, 255, 255, .55);
+}
+
+/* Footer sidebar: kasir card + tanggal + logout */
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: auto;
+    width: 100%;
+}
+
+.kasir-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.kasir-avatar {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kasir-avatar svg {
+    width: 20px;
+    height: 20px;
+    color: rgba(255, 255, 255, .9);
+}
+
+.kasir-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.kasir-nama {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kasir-lokasi {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, .6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, .55);
+    text-decoration: none;
+    padding: 5px 2px;
+    border-radius: 6px;
+    transition: color .15s;
+}
+
+.logout-btn:hover {
+    color: rgba(255, 255, 255, .9);
 }
 
 /* Sidebar navigation */
@@ -175,6 +254,7 @@ body {
     gap: 6px;
     flex-wrap: wrap;
     margin-bottom: 14px;
+    margin-top: 7px;
 }
 
 .chip {
@@ -226,10 +306,38 @@ body {
     cursor: not-allowed;
 }
 
+.pc-mode {
+    align-self: flex-start;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 1.5px 7px;
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink-soft);
+}
+
+.pc-mode.eceran {
+    background: rgba(243, 156, 18, .15);
+    color: var(--amber-dark);
+}
+
+.pc-mode.grosir {
+    background: rgba(24, 90, 133, .1);
+    color: var(--forest);
+}
+
 .pc-name {
     font-weight: 600;
     font-size: 13px;
     line-height: 1.3;
+}
+
+.pc-price small {
+    font-weight: 500;
+    color: var(--ink-soft);
+    font-size: 10.5px;
 }
 
 .pc-price {
