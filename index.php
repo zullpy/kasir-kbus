@@ -5,26 +5,47 @@ session_start();
  * Backend hook point.
  * Wire this up to your real authentication (DB check, password_verify, etc).
  * For now it only demonstrates the expected flow.
+ *
+ * Operator has 3 branch accounts (sodonghilir, sariwangi, manonjaya),
+ * each with its own password. Admin has a single password.
  */
+$validPasswords = [
+    'admin' => 'admin123',
+    'operator' => [
+        'sodonghilir' => 'sodong123',
+        'sariwangi'   => 'sariwangi123',
+        'manonjaya'   => 'manonjaya123',
+    ],
+];
+
 $error = '';
+$errorRole = '';
+$errorBranch = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['password'])) {
     $role     = $_POST['role'] === 'admin' ? 'admin' : 'operator';
     $password = $_POST['password'];
+    $branch   = isset($_POST['branch']) ? $_POST['branch'] : '';
 
-    // TODO: replace with real credential check
-    $validPasswords = [
-        'operator' => 'kasir123',
-        'admin'    => 'admin123',
-    ];
-
-    if ($password === $validPasswords[$role]) {
-        $_SESSION['role'] = $role;
-        header('Location: ' . ($role === 'admin' ? 'admin/dashboard.php' : 'operator/kasir.php'));
-        exit;
-        $error = ''; // success placeholder — redirect goes here
+    if ($role === 'admin') {
+        $isValid = $password === $validPasswords['admin'];
     } else {
-        $error = 'Password salah, silakan coba lagi.';
+        $isValid = isset($validPasswords['operator'][$branch]) && $password === $validPasswords['operator'][$branch];
+    }
+
+    if ($isValid) {
+        $_SESSION['role'] = $role;
+        if ($role === 'operator') {
+            $_SESSION['branch'] = $branch;
+        }
+        header('Location: ' . ($role === 'admin' ? 'admin/dashboard.php' : 'operator/index.php'));
+        exit;
+    } else {
+        $error = ($role === 'operator' && !isset($validPasswords['operator'][$branch]))
+            ? 'Silakan pilih kasir terlebih dahulu.'
+            : 'Password salah, silakan coba lagi.';
         $errorRole = $role;
+        $errorBranch = $branch;
     }
 }
 ?>
@@ -103,91 +124,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['passw
 
             <span class="modal-role-badge" id="modalBadge"><span class="dot"></span> <span id="modalBadgeText">Operator</span></span>
             <h3 id="modalTitle">Masuk sebagai Operator</h3>
-            <p class="modal-sub" id="modalSub">Masukkan password untuk melanjutkan ke kasir.</p>
+            <p class="modal-sub" id="modalSub">Pilih kasir untuk melanjutkan.</p>
 
             <input type="hidden" name="role" id="modalRoleInput" value="operator">
+            <input type="hidden" name="branch" id="modalBranchInput" value="">
 
-            <label class="field-label" for="modalPassword">Password</label>
-            <div class="pass-wrap">
-                <input type="password" name="password" id="modalPassword" placeholder="Masukkan password" required>
-                <button type="button" class="pass-toggle" id="togglePassword" aria-label="Tampilkan password">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
+            <!-- Branch selection (operator only) -->
+            <div class="branch-select" id="branchSelect">
+                <label class="field-label">Pilih Kasir</label>
+                <div class="branch-grid">
+                    <button type="button" class="branch-opt" data-branch="sodonghilir">Sodonghilir</button>
+                    <button type="button" class="branch-opt" data-branch="sariwangi">Sariwangi</button>
+                    <button type="button" class="branch-opt" data-branch="manonjaya">Manonjaya</button>
+                </div>
+            </div>
+
+            <!-- Kasir profile (photo + name), revealed after branch is chosen -->
+            <div class="kasir-profile" id="kasirProfile">
+                <div class="kasir-photo" id="kasirPhoto">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"></circle>
+                        <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path>
                     </svg>
-                </button>
+                </div>
+                <div class="kasir-meta">
+                    <span class="kasir-name" id="kasirName">Nama belum diisi</span>
+                    <span class="kasir-branch" id="kasirBranch"></span>
+                </div>
+            </div>
+
+            <!-- Password section (revealed after branch chosen, or immediately for admin) -->
+            <div class="pass-section" id="passSection">
+                <label class="field-label" for="modalPassword">Password</label>
+                <div class="pass-wrap">
+                    <input type="password" name="password" id="modalPassword" placeholder="Masukkan password" required>
+                    <button type="button" class="pass-toggle" id="togglePassword" aria-label="Tampilkan password">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="error-msg" id="modalError"><?php echo htmlspecialchars($error); ?></div>
 
-            <button type="submit" class="modal-submit">Masuk</button>
+            <button type="submit" class="modal-submit" id="modalSubmit">Masuk</button>
         </form>
     </div>
 
     <script>
-        const roleData = {
-            operator: {
-                label: 'Operator',
-                title: 'Masuk sebagai Operator',
-                sub: 'Masukkan password untuk melanjutkan ke kasir.'
-            },
-            admin: {
-                label: 'Admin',
-                title: 'Masuk sebagai Admin',
-                sub: 'Masukkan password untuk mengelola aplikasi kasir.'
-            }
+        window.serverError = {
+            hasError: <?php echo (!empty($error)) ? 'true' : 'false'; ?>,
+            role: '<?php echo htmlspecialchars($errorRole); ?>',
+            branch: '<?php echo htmlspecialchars($errorBranch); ?>'
         };
-
-        const overlay = document.getElementById('modalOverlay');
-        const card = document.getElementById('modalCard');
-        const badgeText = document.getElementById('modalBadgeText');
-        const titleEl = document.getElementById('modalTitle');
-        const subEl = document.getElementById('modalSub');
-        const roleInput = document.getElementById('modalRoleInput');
-        const passwordEl = document.getElementById('modalPassword');
-        const closeBtn = document.getElementById('modalClose');
-        const toggleBtn = document.getElementById('togglePassword');
-
-        function openModal(role) {
-            const data = roleData[role];
-            card.dataset.role = role;
-            roleInput.value = role;
-            badgeText.textContent = data.label;
-            titleEl.textContent = data.title;
-            subEl.textContent = data.sub;
-            passwordEl.value = '';
-            overlay.classList.add('is-open');
-            setTimeout(() => passwordEl.focus(), 150);
-        }
-
-        function closeModal() {
-            overlay.classList.remove('is-open');
-        }
-
-        document.querySelectorAll('[data-open-modal]').forEach(btn => {
-            btn.addEventListener('click', () => openModal(btn.dataset.role));
-        });
-
-        closeBtn.addEventListener('click', closeModal);
-
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeModal();
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal();
-        });
-
-        toggleBtn.addEventListener('click', () => {
-            const isPassword = passwordEl.type === 'password';
-            passwordEl.type = isPassword ? 'text' : 'password';
-        });
-
-        <?php if (!empty($error)): ?>
-            // Reopen modal on server-side validation error so the message is visible
-            window.addEventListener('DOMContentLoaded', () => openModal('<?php echo $errorRole; ?>'));
-        <?php endif; ?>
     </script>
+    <script src="script.js"></script>
 
 </body>
 

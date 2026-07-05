@@ -65,7 +65,7 @@ body::before {
 }
 
 .brand img {
-    width: min(360px, 70vw);
+    width: min(400px, 70vw);
     filter: drop-shadow(0 12px 18px rgba(16, 30, 60, 0.35));
 }
 
@@ -327,6 +327,164 @@ body::before {
     font-weight: 600;
     color: var(--navy-deep);
     margin-bottom: 6px;
+}
+
+/* ---------- Branch (kasir) selection ---------- */
+.branch-select {
+    display: none;
+    margin-bottom: 18px;
+}
+
+.branch-select.is-visible {
+    display: block;
+}
+
+.branch-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.branch-opt {
+    appearance: none;
+    border: 1.5px solid #cddbea;
+    background: #fff;
+    color: var(--navy-deep);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    position: relative;
+}
+
+.branch-opt:hover {
+    border-color: var(--blue-mid);
+    background: var(--sky-white);
+}
+
+.branch-opt::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid #cddbea;
+    transform: translateY(-50%);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.branch-opt.is-selected {
+    border-color: var(--blue-mid);
+    background: var(--sky-white);
+    box-shadow: 0 0 0 3px rgba(63, 127, 196, 0.14);
+}
+
+.branch-opt.is-selected::after {
+    border-color: var(--blue-mid);
+    background: var(--blue-mid);
+}
+
+/* ---------- Kasir profile (photo + name) ---------- */
+.kasir-profile {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: var(--sky-white);
+    border: 1px solid #dbe7f3;
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.kasir-profile.is-visible {
+    display: flex;
+    animation: passReveal 0.22s ease forwards;
+}
+
+.kasir-photo {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--blue-soft), var(--blue-mid));
+    color: var(--sky-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.kasir-photo svg {
+    width: 24px;
+    height: 24px;
+}
+
+.kasir-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.kasir-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.kasir-name {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--navy-deep);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kasir-branch {
+    font-size: 12px;
+    color: var(--navy-deep);
+    opacity: 0.65;
+}
+
+/* ---------- Password section reveal ---------- */
+.pass-section {
+    display: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    animation: none;
+}
+
+.pass-section.is-visible {
+    display: block;
+    animation: passReveal 0.22s ease forwards;
+}
+
+@keyframes passReveal {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-submit:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 .pass-wrap {
