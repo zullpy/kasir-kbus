@@ -13,9 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const toast = document.getElementById('toast');
     const rhDate = document.getElementById('rhDate');
     const rhTime = document.getElementById('rhTime');
+    const rhTransNo = document.getElementById('rhTransNo');
     const posDate = document.getElementById('posDate');
+    const paymentMethodGroup = document.getElementById('paymentMethodGroup');
+    const cashRow = document.getElementById('cashRow');
+    const changeRow = document.getElementById('changeRow');
 
     // State
+    let activePaymentMethod = 'cash';
     let rawProducts = window.PRODUCTS || []; // data mentah dari API (per nama_barang)
     let displayItems = [];                   // hasil turunan sesuai mode aktif (grosir/eceran/semua)
     let cart = [];
@@ -32,6 +37,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    // Nomor transaksi harian: diambil dari database (tabel transaksi, db_kasir),
+    // sumber yang sama dipakai checkout.php untuk generate kode_transaksi.
+    // Jadi nomor di receipt-pane selalu sinkron & tercatat, walau dibuka
+    // dari beberapa komputer/browser sekaligus.
+    let todayTransactionCount = 0;
+
+    // Ambil ulang jumlah transaksi hari ini dari server.
+    async function fetchTodayTransactionCount() {
+        try {
+            const res = await fetch('../api/get-trans-count.php');
+            const data = await res.json();
+            todayTransactionCount = data.success ? (Number(data.count) || 0) : 0;
+        } catch (err) {
+            console.error('Gagal mengambil jumlah transaksi hari ini:', err);
+        }
+        return todayTransactionCount;
+    }
+
+    // Menampilkan nomor transaksi BERIKUTNYA (yang akan dibuat) di receipt pane.
+    function updateTransactionNoDisplay() {
+        if (!rhTransNo) return;
+        rhTransNo.textContent = '#' + (todayTransactionCount + 1);
     }
 
     function setDate() {
@@ -237,7 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
         changeText.textContent = cashInput.value === '' ? '—' : formatRupiah(Math.max(change, 0));
         changeText.classList.toggle('neg', change < 0);
 
-        const canPay = cart.length > 0 && total > 0 && cash >= total;
+        const canPay = cart.length > 0 && total > 0 &&
+            (activePaymentMethod !== 'cash' || cash >= total);
         payBtn.disabled = !canPay;
     }
 
@@ -273,7 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mode: it.mode,
             })),
             discount_percent: discPercent,
-            cash: Number(cashInput.value.replace(/\./g, '')) || 0,
+            metode_pembayaran: activePaymentMethod,
+            cash: activePaymentMethod === 'cash' ? (Number(cashInput.value.replace(/\./g, '')) || 0) : 0,
         };
 
         try {
@@ -291,9 +322,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const printInfo = data.print && data.print.success ? '· Struk tercetak' : '· Struk belum tercetak';
             showToast(`Transaksi ${data.kode_transaksi} berhasil · ${formatRupiah(data.total)} · Kembalian ${formatRupiah(data.change)} ${printInfo}`);
+            await fetchTodayTransactionCount();
+            updateTransactionNoDisplay();
             cart = [];
             discountInput.value = '0';
             cashInput.value = '';
+            activePaymentMethod = 'cash';
+            paymentMethodGroup.querySelectorAll('input[type="radio"]').forEach((r) => { r.checked = r.value === 'cash'; });
+            paymentMethodGroup.querySelectorAll('.pm-option').forEach((l) => { l.classList.toggle('active', l.querySelector('input')?.value === 'cash'); });
+            cashRow.style.display = '';
+            changeRow.style.display = '';
             renderCart();
             await refreshProducts();
         } catch (err) {
@@ -338,6 +376,22 @@ document.addEventListener('DOMContentLoaded', () => {
         addToCart(card.dataset.uid);
     });
 
+    if (paymentMethodGroup) {
+        paymentMethodGroup.addEventListener('change', (e) => {
+            const radio = e.target.closest('input[type="radio"]');
+            if (!radio) return;
+            activePaymentMethod = radio.value;
+            paymentMethodGroup.querySelectorAll('.pm-option').forEach((label) => {
+                label.classList.toggle('active', label.querySelector('input')?.value === activePaymentMethod);
+            });
+            const isCash = activePaymentMethod === 'cash';
+            cashRow.style.display = isCash ? '' : 'none';
+            changeRow.style.display = isCash ? '' : 'none';
+            if (!isCash) cashInput.value = '';
+            updateTotals();
+        });
+    }
+
     receiptLines.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
@@ -366,6 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function init() {
         await refreshProducts();
         setDate();
+        await fetchTodayTransactionCount();
+        updateTransactionNoDisplay();
         renderCart();
     }
 

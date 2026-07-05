@@ -30,17 +30,55 @@ while ($row = mysqli_fetch_assoc($resultTransaksi)) {
 mysqli_stmt_close($stmt);
 
 // Ambil semua item per transaksi dalam rentang tanggal (satu query, dikelompokkan di PHP)
+$idBarangList = [];
 if (!empty($transaksiList)) {
     $ids = implode(',', array_map('intval', array_keys($transaksiList)));
     $resultDetail = mysqli_query(
         $koneksi_kasir,
-        "SELECT id_transaksi, nama_barang, harga, qty, subtotal
+        "SELECT id_transaksi, id_barang, nama_barang, harga, qty, subtotal
          FROM transaksi_detail
          WHERE id_transaksi IN ($ids)"
     );
     while ($d = mysqli_fetch_assoc($resultDetail)) {
         $transaksiList[$d['id_transaksi']]['items'][] = $d;
+        if (!empty($d['id_barang'])) {
+            $idBarangList[(int) $d['id_barang']] = true;
+        }
     }
+}
+
+// Ambil info satuan dari database barang (db_draft_barang), digabung manual di PHP via id_barang
+$barangInfoMap = [];
+if (!empty($idBarangList)) {
+    $idBarangStr = implode(',', array_map('intval', array_keys($idBarangList)));
+    $resultBarang = mysqli_query(
+        $koneksi_draft,
+        "SELECT id_barang, satuan, satuan_eceran, harga_jual, harga_jual_eceran
+         FROM barang
+         WHERE id_barang IN ($idBarangStr)"
+    );
+    while ($b = mysqli_fetch_assoc($resultBarang)) {
+        $barangInfoMap[$b['id_barang']] = $b;
+    }
+}
+
+// Tentukan label satuan tiap item transaksi berdasarkan harga yang tercatat
+// (dicocokkan ke harga_jual = satuan besar, atau harga_jual_eceran = satuan eceran)
+function tentukanSatuan($item, $barangInfoMap)
+{
+    if (empty($item['id_barang']) || !isset($barangInfoMap[$item['id_barang']])) {
+        return '';
+    }
+    $info = $barangInfoMap[$item['id_barang']];
+    $harga = (float) $item['harga'];
+
+    if (isset($info['harga_jual']) && abs($harga - (float) $info['harga_jual']) < 1) {
+        return $info['satuan'] ?? '';
+    }
+    if (isset($info['harga_jual_eceran']) && abs($harga - (float) $info['harga_jual_eceran']) < 1) {
+        return $info['satuan_eceran'] ?? '';
+    }
+    return '';
 }
 
 function formatRupiahPhp($n)
@@ -57,7 +95,7 @@ function formatRupiahPhp($n)
     <title>Riwayat Transaksi - KBUS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="shortcut icon" href="../assets/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="../..assets/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../style.css">
 </head>
 
@@ -125,9 +163,13 @@ function formatRupiahPhp($n)
                                                 <?php else: ?>
                                                     <table class="detail-mini-table">
                                                         <?php foreach ($trx['items'] as $item): ?>
+                                                            <?php $satuanLabel = tentukanSatuan($item, $barangInfoMap); ?>
                                                             <tr>
                                                                 <td><?= htmlspecialchars($item['nama_barang']) ?></td>
-                                                                <td><?= (int) $item['qty'] ?> x <?= formatRupiahPhp($item['harga']) ?></td>
+                                                                <td>
+                                                                    <?= (int) $item['qty'] ?><?= $satuanLabel ? ' ' . htmlspecialchars($satuanLabel) : '' ?>
+                                                                    x <?= formatRupiahPhp($item['harga']) ?>
+                                                                </td>
                                                                 <td style="text-align:right;"><?= formatRupiahPhp($item['subtotal']) ?></td>
                                                             </tr>
                                                         <?php endforeach; ?>

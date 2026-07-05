@@ -1,5 +1,5 @@
 <?php
-// Partial navigasi sidebar - dipakai di index.php, riwayat-transaksi.php, laporan-harian.php
+// Partial navigasi sidebar - dipakai di index.php, riwayat-transaksi.php, laporan-harian.php, laporan-setoran.php
 $__current = basename($_SERVER['PHP_SELF']);
 
 // Data kasir dari session
@@ -41,12 +41,38 @@ $__kasirInfo = $__kasirMap[$__branch] ?? ['nama' => 'Kasir', 'lokasi' => '-'];
             </svg>
             <span>Riwayat Transaksi</span>
         </a>
+        <a href="/operator/stok/stok-barang.php"
+           class="nav-item <?= $__current === 'stok-barang.php' ? 'active' : '' ?>" title="Stok Barang">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="3.5" y="7" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                <path d="M3.5 11.5h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                <path d="M8 4h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+            <span>Stok Barang</span>
+        </a>
         <a href="/operator/laporan/laporan-harian.php"
            class="nav-item <?= $__current === 'laporan-harian.php' ? 'active' : '' ?>" title="Laporan Harian">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <span>Laporan Omset Harian</span>
+        </a>
+        <a href="/operator/laporan/laporan-setoran.php"
+           class="nav-item <?= $__current === 'laporan-setoran.php' ? 'active' : '' ?>" title="Laporan Setoran">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="4" y="7" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M8 13h8M8 16.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+            <span>Laporan Setoran</span>
+        </a>
+        <a href="/operator/laporan/laporan-laba-kotor-stok.php"
+           class="nav-item <?= $__current === 'laporan-laba-kotor-stok.php' ? 'active' : '' ?>" title="Rekap Laba Kotor Stok Barang">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M3 17l5-5 4 4 8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M15 8h5v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Rekap Laba Kotor Stok Barang</span>
         </a>
     </nav>
 

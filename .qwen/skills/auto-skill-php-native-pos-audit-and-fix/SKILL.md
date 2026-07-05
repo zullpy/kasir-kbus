@@ -1,8 +1,8 @@
 ---
 name: php-native-pos-audit-and-fix
-description: Audit and fix a PHP Native POS/cashier application — covering multi-DB data-source inconsistencies, checkout API design, cross-DB JOINs, sidebar path bugs, session guards, and kasir profile UI.
+description: Audit and fix a PHP Native POS/cashier application — covering multi-DB data-source inconsistencies, checkout API design, cross-DB JOINs, sidebar path bugs, session guards, kasir profile UI, and multi-payment method (Cash/Transfer/QRIS) flow.
 source: auto-skill
-extracted_at: '2026-07-05T08:10:52.077Z'
+extracted_at: '2026-07-05T09:02:52.712Z'
 ---
 
 # PHP Native POS — Audit & Fix Playbook
@@ -142,6 +142,132 @@ This keeps the sidebar as a single shared partial without introducing an absolut
 
 ---
 
+## 7. Multi-payment method (Cash / Transfer / QRIS)
+
+**Pattern:** Add a radio-button payment selector to the receipt panel. Only Cash shows the cash-input and change rows; Transfer/QRIS bypass them entirely.
+
+### DB migration
+```sql
+ALTER TABLE transaksi
+  ADD COLUMN metode_pembayaran ENUM('cash','transfer','qris') NOT NULL DEFAULT 'cash';
+```
+
+### HTML — radio group inside the receipt totals section
+```html
+<div class="payment-method-group" id="paymentMethodGroup">
+  <label class="pm-option active">
+    <input type="radio" name="pm" value="cash" checked> Cash
+  </label>
+  <label class="pm-option">
+    <input type="radio" name="pm" value="transfer"> Transfer
+  </label>
+  <label class="pm-option">
+    <input type="radio" name="pm" value="qris"> QRIS
+  </label>
+</div>
+<!-- wrap cash-input row in id="cashRow", change row in id="changeRow" -->
+```
+
+### CSS — active state via class toggle (hidden radio trick)
+```css
+.payment-method-group { display: flex; gap: 6px; }
+.pm-option {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border: 1.5px solid var(--line);
+    border-radius: 8px; cursor: pointer; font-size: 12px;
+    font-weight: 500; color: var(--ink-soft); background: var(--white);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+.pm-option input[type="radio"] { display: none; }
+.pm-option.active, .pm-option:has(input:checked) {
+    border-color: var(--forest); background: var(--forest); color: var(--white);
+}
+```
+
+### JS — state variable + change listener
+```js
+let activePaymentMethod = 'cash';
+
+if (paymentMethodGroup) {
+    paymentMethodGroup.addEventListener('change', (e) => {
+        const radio = e.target.closest('input[type="radio"]');
+        if (!radio) return;
+        activePaymentMethod = radio.value;
+        paymentMethodGroup.querySelectorAll('.pm-option').forEach((label) => {
+            label.classList.toggle('active', label.querySelector('input')?.value === activePaymentMethod);
+        });
+        const isCash = activePaymentMethod === 'cash';
+        cashRow.style.display = isCash ? '' : 'none';
+        changeRow.style.display = isCash ? '' : 'none';
+        if (!isCash) cashInput.value = '';
+        updateTotals();
+    });
+}
+```
+
+**`updateTotals()` canPay guard:**
+```js
+const canPay = cart.length > 0 && total > 0 &&
+    (activePaymentMethod !== 'cash' || cash >= total);
+```
+
+**`checkout()` payload:**
+```js
+const payload = {
+    items: cart.map((it) => ({ name: it.name, qty: it.qty, ... })),
+    discount_percent: discPercent,
+    metode_pembayaran: activePaymentMethod,
+    cash: activePaymentMethod === 'cash' ? (Number(cashInput.value.replace(/\./g, '')) || 0) : 0,
+};
+```
+
+**Reset after successful checkout:**
+```js
+activePaymentMethod = 'cash';
+paymentMethodGroup.querySelectorAll('input[type="radio"]').forEach((r) => { r.checked = r.value === 'cash'; });
+paymentMethodGroup.querySelectorAll('.pm-option').forEach((l) => {
+    l.classList.toggle('active', l.querySelector('input')?.value === 'cash');
+});
+cashRow.style.display = '';
+changeRow.style.display = '';
+```
+
+### PHP API (`api/checkout.php`)
+```php
+// Parse & validate
+$metodePembayaran = in_array($input['metode_pembayaran'] ?? '', ['cash', 'transfer', 'qris'])
+                      ? $input['metode_pembayaran']
+                      : 'cash';
+
+// Cash-sufficiency guard — non-cash bypasses it
+if ($metodePembayaran === 'cash') {
+    if ($cashReceived < $total) {
+        echo json_encode(['success' => false, 'message' => 'Jumlah cash tidak mencukupi.']);
+        exit;
+    }
+    $kembalian = $cashReceived - $total;
+} else {
+    $cashReceived = $total;   // for record-keeping
+    $kembalian    = 0;
+}
+
+// INSERT — add metode_pembayaran column; bind string gains one extra 's'
+$stmtTrx = mysqli_prepare(
+    $koneksi_kasir,
+    "INSERT INTO transaksi (kode_transaksi, tanggal, subtotal, diskon, total, cash, kembalian, kasir, metode_pembayaran)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+);
+mysqli_stmt_bind_param(
+    $stmtTrx, 'ssdddddss',
+    $kodeTransaksi, $tanggalNow,
+    $subtotal, $discountAmount, $total,
+    $cashReceived, $kembalian, $kasir, $metodePembayaran
+);
+```
+
+---
+
 ## Checklist for any PHP Native POS audit
 
 - [ ] Verify all API endpoints called by JS actually exist on disk
@@ -151,3 +277,4 @@ This keeps the sidebar as a single shared partial without introducing an absolut
 - [ ] Verify checkout uses a DB transaction (BEGIN/COMMIT/ROLLBACK) wrapping both insert and stock update
 - [ ] Confirm sidebar partial navigation paths work from all include depths
 - [ ] Check for hardcoded credentials and flag for replacement with DB-backed auth + `password_verify`
+- [ ] If multi-payment is needed, confirm `metode_pembayaran` column exists in the transactions table and all layers (HTML, JS, PHP API) handle Cash/Transfer/QRIS consistently

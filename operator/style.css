@@ -449,10 +449,25 @@ body {
 
 .receipt-meta {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
     color: var(--ink);
+    text-align: center;
+}
+
+.receipt-meta-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.receipt-meta-row span {
+    white-space: nowrap;
 }
 
 .receipt-divider {
@@ -953,4 +968,75 @@ body {
     .report-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Payment method selector */
+.payment-method-group {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.pm-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 6px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--ink-soft);
+    background: var(--white);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.pm-option span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pm-option input[type="radio"] {
+    display: none;
+}
+
+.pm-radio {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    color: inherit;
+}
+
+.pm-radio-outer {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+}
+
+.pm-radio-dot {
+    fill: currentColor;
+    opacity: 0;
+    transform: scale(0);
+    transform-origin: 10px 10px;
+    transition: transform .15s ease, opacity .15s ease;
+}
+
+.pm-option.active,
+.pm-option:has(input:checked) {
+    border-color: var(--forest);
+    background: var(--forest);
+    color: var(--white);
+}
+
+.pm-option.active .pm-radio-dot,
+.pm-option:has(input:checked) .pm-radio-dot {
+    opacity: 1;
+    transform: scale(1);
 }

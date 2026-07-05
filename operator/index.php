@@ -53,8 +53,11 @@ require_once '../database/koneksi.php';
                             </div>
                             <div class="receipt-divider"></div>
                             <div class="receipt-meta">
-                                <span>Tanggal : <b id="rhDate"></b></span>
-                                <span>Jam : <b id="rhTime"></b></span>
+                                <div class="receipt-meta-row"><b id="rhTransNo">#1</b></div>
+                                <div class="receipt-meta-row">
+                                    <span>Tanggal : <b id="rhDate"></b></span>
+                                    <span>Jam : <b id="rhTime"></b></span>
+                                </div>
                             </div>
                             <div class="receipt-divider"></div>
                             <table class="receipt-table">
@@ -95,10 +98,38 @@ require_once '../database/koneksi.php';
                                     <span id="totalText">Rp0</span>
                                 </div>
                                 <div class="rt-row">
+                                    <div class="payment-method-group" id="paymentMethodGroup">
+                                        <label class="pm-option active">
+                                            <input type="radio" name="paymentMethod" value="cash" checked>
+                                            <svg class="pm-radio" viewBox="0 0 20 20" aria-hidden="true">
+                                                <circle class="pm-radio-outer" cx="10" cy="10" r="8"></circle>
+                                                <circle class="pm-radio-dot" cx="10" cy="10" r="4"></circle>
+                                            </svg>
+                                            <span>Cash</span>
+                                        </label>
+                                        <label class="pm-option">
+                                            <input type="radio" name="paymentMethod" value="transfer">
+                                            <svg class="pm-radio" viewBox="0 0 20 20" aria-hidden="true">
+                                                <circle class="pm-radio-outer" cx="10" cy="10" r="8"></circle>
+                                                <circle class="pm-radio-dot" cx="10" cy="10" r="4"></circle>
+                                            </svg>
+                                            <span>Transfer</span>
+                                        </label>
+                                        <label class="pm-option">
+                                            <input type="radio" name="paymentMethod" value="qris">
+                                            <svg class="pm-radio" viewBox="0 0 20 20" aria-hidden="true">
+                                                <circle class="pm-radio-outer" cx="10" cy="10" r="8"></circle>
+                                                <circle class="pm-radio-dot" cx="10" cy="10" r="4"></circle>
+                                            </svg>
+                                            <span>QRIS</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="rt-row" id="cashRow">
                                     <span>Cash</span>
                                     <input type="text" id="cashInput" inputmode="numeric" placeholder="0">
                                 </div>
-                                <div class="rt-row">
+                                <div class="rt-row" id="changeRow">
                                     <span>Kembalian</span>
                                     <span id="changeText">—</span>
                                 </div>

@@ -17,9 +17,12 @@ if (!$input || empty($input['items']) || !isset($input['discount_percent'], $inp
     exit;
 }
 
-$items           = $input['items'];
-$discountPercent = max(0, min(100, (float) $input['discount_percent']));
-$cashReceived    = (float) $input['cash'];
+$items              = $input['items'];
+$discountPercent    = max(0, min(100, (float) $input['discount_percent']));
+$cashReceived       = (float) $input['cash'];
+$metodePembayaran   = in_array($input['metode_pembayaran'] ?? '', ['cash', 'transfer', 'qris'])
+                        ? $input['metode_pembayaran']
+                        : 'cash';
 
 // Mapping nilai branch di session ke value kolom `lokasi` yang sebenarnya di DB.
 // Harus SAMA PERSIS dengan mapping di get-products.php.
@@ -119,11 +122,16 @@ foreach ($items as $item) {
 
 $discountAmount = round($subtotal * ($discountPercent / 100));
 $total          = $subtotal - $discountAmount;
-$kembalian      = $cashReceived - $total;
 
-if ($cashReceived < $total) {
-    echo json_encode(['success' => false, 'message' => 'Jumlah cash tidak mencukupi.']);
-    exit;
+if ($metodePembayaran === 'cash') {
+    if ($cashReceived < $total) {
+        echo json_encode(['success' => false, 'message' => 'Jumlah cash tidak mencukupi.']);
+        exit;
+    }
+    $kembalian = $cashReceived - $total;
+} else {
+    $cashReceived = $total;
+    $kembalian    = 0;
 }
 
 // ── Generate kode transaksi: TRX-YYYYMMDD-XXXX ─────────────────────────────────
@@ -149,14 +157,14 @@ mysqli_begin_transaction($koneksi_mbg);
 try {
     $stmtTrx = mysqli_prepare(
         $koneksi_kasir,
-        "INSERT INTO transaksi (kode_transaksi, tanggal, subtotal, diskon, total, cash, kembalian, kasir)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO transaksi (kode_transaksi, tanggal, subtotal, diskon, total, cash, kembalian, kasir, metode_pembayaran)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     mysqli_stmt_bind_param(
-        $stmtTrx, 'ssddddds',
+        $stmtTrx, 'ssdddddss',
         $kodeTransaksi, $tanggalNow,
         $subtotal, $discountAmount, $total,
-        $cashReceived, $kembalian, $kasir
+        $cashReceived, $kembalian, $kasir, $metodePembayaran
     );
     mysqli_stmt_execute($stmtTrx);
     $idTransaksi = mysqli_insert_id($koneksi_kasir);
@@ -200,12 +208,13 @@ try {
 }
 
 echo json_encode([
-    'success'        => true,
-    'kode_transaksi' => $kodeTransaksi,
-    'subtotal'       => $subtotal,
-    'diskon'         => $discountAmount,
-    'total'          => $total,
-    'cash'           => $cashReceived,
-    'change'         => $kembalian,
-    'print'          => ['success' => false],
+    'success'           => true,
+    'kode_transaksi'    => $kodeTransaksi,
+    'subtotal'          => $subtotal,
+    'diskon'            => $discountAmount,
+    'total'             => $total,
+    'cash'              => $cashReceived,
+    'change'            => $kembalian,
+    'metode_pembayaran' => $metodePembayaran,
+    'print'             => ['success' => false],
 ]);

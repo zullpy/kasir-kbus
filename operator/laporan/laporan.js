@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const posDate = document.getElementById('posDate');
-    const tanggalInput = document.getElementById('tanggal');
+    const tanggalMulai = document.getElementById('tanggal_mulai');
+    const tanggalSelesai = document.getElementById('tanggal_selesai');
 
     if (posDate) {
         const now = new Date();
@@ -9,10 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Langsung tampilkan laporan saat tanggal diganti, tanpa perlu klik tombol
-    if (tanggalInput) {
-        tanggalInput.addEventListener('change', () => {
-            tanggalInput.closest('form').submit();
-        });
-    }
+    // Langsung tampilkan laporan saat salah satu tanggal diganti, tanpa perlu klik tombol
+    [tanggalMulai, tanggalSelesai].forEach((input) => {
+        if (input) {
+            input.addEventListener('change', () => {
+                input.closest('form').submit();
+            });
+        }
+    });
 });
