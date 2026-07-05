@@ -21,10 +21,10 @@ if (!is_dir($dirTtd))   mkdir($dirTtd, 0755, true);
 // ==== Proses submit form setoran ====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi']) && $_POST['aksi'] === 'simpan_setoran') {
 
-    $saldo_kasir  = str_replace(['.', ','], ['', '.'], $_POST['saldo_kasir'] ?? '0');
-    $omset_harian = str_replace(['.', ','], ['', '.'], $_POST['omset_harian'] ?? '0');
-    $saldo_kasir  = is_numeric($saldo_kasir) ? (float) $saldo_kasir : 0;
-    $omset_harian = is_numeric($omset_harian) ? (float) $omset_harian : 0;
+    $saldo_kasir      = str_replace(['.', ','], ['', '.'], $_POST['saldo_kasir'] ?? '0');
+    $setoran_koperasi = str_replace(['.', ','], ['', '.'], $_POST['setoran_koperasi'] ?? '0');
+    $saldo_kasir      = is_numeric($saldo_kasir) ? (float) $saldo_kasir : 0;
+    $setoran_koperasi = is_numeric($setoran_koperasi) ? (float) $setoran_koperasi : 0;
     $tanggal      = date('Y-m-d');
 
     // --- Upload bukti transfer ---
@@ -62,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi']) && $_POST['ak
 
     if (empty($error)) {
         $stmt = mysqli_prepare($koneksi_kasir,
-            "INSERT INTO setoran (cabang, tanggal, saldo_kasir, omset_harian, bukti_tf, tanda_tangan, status)
+            "INSERT INTO setoran (cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status)
              VALUES (?, ?, ?, ?, ?, ?, 'pending')");
-        mysqli_stmt_bind_param($stmt, 'ssddss', $cabang, $tanggal, $saldo_kasir, $omset_harian, $namaBukti, $namaTtd);
+        mysqli_stmt_bind_param($stmt, 'ssddss', $cabang, $tanggal, $saldo_kasir, $setoran_koperasi, $namaBukti, $namaTtd);
         $sukses = mysqli_stmt_execute($stmt);
         if (!$sukses) {
             $error = 'Gagal menyimpan setoran: ' . mysqli_error($koneksi_kasir);
@@ -86,7 +86,7 @@ if (isset($_GET['sukses']) && $_GET['sukses'] === '1') {
 
 // ==== Ambil data setoran untuk tabel ====
 $stmt = mysqli_prepare($koneksi_kasir,
-    "SELECT id, tanggal, saldo_kasir, omset_harian, bukti_tf, tanda_tangan, status, created_at
+    "SELECT id, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
      FROM setoran WHERE cabang = ? ORDER BY created_at DESC LIMIT 100");
 mysqli_stmt_bind_param($stmt, 's', $cabang);
 mysqli_stmt_execute($stmt);
@@ -113,6 +113,10 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
     .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
     .form-group { display:flex; flex-direction:column; gap:6px; }
     .form-group.full { grid-column: 1 / -1; }
+    .tanggal-jam-box {
+        border: 1px solid #d7dbe3; border-radius: 8px; padding: 9px 12px; font-size: 14px;
+        font-family: 'IBM Plex Mono', monospace; background:#f8f9fb; color:#374151;
+    }
     label { font-size: 13px; font-weight: 600; color:#374151; }
     input[type="text"], input[type="number"], input[type="file"] {
         border: 1px solid #d7dbe3; border-radius: 8px; padding: 9px 12px; font-size: 14px; font-family: inherit;
@@ -189,7 +193,7 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                         <tr>
                             <th>Tanggal</th>
                             <th>Saldo Kasir</th>
-                            <th>Omset Harian</th>
+                            <th>Setoran ke Koperasi</th>
                             <th>Bukti TF</th>
                             <th>Tanda Tangan</th>
                             <th>Status</th>
@@ -202,7 +206,7 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                                 <tr>
                                     <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
                                     <td>Rp <?= number_format($row['saldo_kasir'], 0, ',', '.') ?></td>
-                                    <td>Rp <?= number_format($row['omset_harian'], 0, ',', '.') ?></td>
+                                    <td>Rp <?= number_format($row['setoran_koperasi'], 0, ',', '.') ?></td>
                                     <td>
                                         <?php if ($row['bukti_tf']): ?>
                                             <a class="link-file" target="_blank"
@@ -247,13 +251,18 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
             <input type="hidden" name="tanda_tangan_data" id="tanda_tangan_data">
 
             <div class="form-grid">
+                <div class="form-group full">
+                    <label>Tanggal &amp; Jam Input</label>
+                    <div class="tanggal-jam-box" id="tanggalJamBox">--</div>
+                </div>
+
                 <div class="form-group">
                     <label for="saldo_kasir">Saldo Kasir (Rp) </br><small>Total uang fisik yang ada di laci kasir</small></label>
                     <input type="text" id="saldo_kasir" name="saldo_kasir" placeholder="0" inputmode="numeric" autocomplete="off" required>
                 </div>
                 <div class="form-group">
-                    <label for="omset_harian">Omset Hari Ini (Rp) </br><small>Total omset hari ini</small></label>
-                    <input type="text" id="omset_harian" name="omset_harian" placeholder="0" inputmode="numeric" autocomplete="off" required>
+                    <label for="setoran_koperasi">Uang Disetor ke Rekening Koperasi (Rp) </label>
+                    <input type="text" id="setoran_koperasi" name="setoran_koperasi" placeholder="0" inputmode="numeric" autocomplete="off" required>
                 </div>
 
                 <div class="form-group full">
@@ -278,7 +287,20 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
 </div>
 
 <script>
-// ==== Format otomatis Rupiah untuk Saldo Kasir & Omset Harian ====
+// ==== Tanggal & Jam otomatis (berjalan sendiri) di dalam modal ====
+const tanggalJamBox = document.getElementById('tanggalJamBox');
+function updateTanggalJam() {
+    const now = new Date();
+    const tanggal = now.toLocaleDateString('id-ID', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    const jam = now.toLocaleTimeString('id-ID', { hour12: false });
+    tanggalJamBox.textContent = tanggal + ' - ' + jam;
+}
+updateTanggalJam();
+setInterval(updateTanggalJam, 1000);
+
+// ==== Format otomatis Rupiah untuk Saldo Kasir & Setoran ke Koperasi ====
 function formatRupiahInput(el) {
     el.addEventListener('input', function () {
         let cursorFromEnd = el.value.length - el.selectionStart;
@@ -290,7 +312,7 @@ function formatRupiahInput(el) {
     });
 }
 formatRupiahInput(document.getElementById('saldo_kasir'));
-formatRupiahInput(document.getElementById('omset_harian'));
+formatRupiahInput(document.getElementById('setoran_koperasi'));
 
 // ==== Signature pad sederhana (tanda tangan kasir) ====
 const canvas = document.getElementById('pad');
