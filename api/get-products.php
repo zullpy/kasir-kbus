@@ -5,12 +5,15 @@ if (session_status() === PHP_SESSION_NONE) {
 
 header('Content-Type: application/json');
 require_once '../database/koneksi.php';
+require_once '../includes/stok_helper.php'; // konversi qty_eceran (source of truth) <-> tampilan dus/pcs
 
-// Stok grosir (master) -> db_mbg.stok_barang (qty satuan DUS/dsb, per lokasi)
-// Stok eceran          -> DIHITUNG dari stok grosir x isi_per_satuan, BUKAN diambil
-//                          langsung dari stok_barang_eceran. Jadi kalau dus habis,
-//                          otomatis stok eceran ikut jadi 0 juga.
-// Harga & konversi      -> db_draft_barang.barang (cross-database JOIN by nama_barang)
+// Stok: SATU kolom source of truth -> db_mbg.stok_barang.qty_eceran (total
+// dalam satuan kecil, per lokasi). Kolom qty_grosir TIDAK dipakai lagi untuk
+// menghitung stok (namanya tetap ada di tabel, cuma tidak dibaca di sini).
+// Stok "grosir" yang ditampilkan ke user dihitung on-the-fly dari
+// qty_eceran / isi_per_satuan (lihat stokTersediaGrosir() di stok_helper.php).
+// Satuan grosir/eceran  -> db_mbg.stok_barang.satuan / satuan_eceran (KOLOM SENDIRI)
+// Harga & isi_per_satuan (info konversi) -> db_draft_barang.barang (cross-database JOIN by nama_barang)
 
 $lokasi = $_SESSION['branch'] ?? '';
 
@@ -37,11 +40,11 @@ $query = "
         ROW_NUMBER() OVER (ORDER BY gs.nama_barang ASC) AS id,
         gs.nama_barang                                   AS name,
         gs.satuan                                        AS satuan,
-        gs.qty                                           AS stock,
+        gs.satuan_eceran                                  AS satuan_eceran,
+        gs.qty_eceran                                     AS qty_eceran,
         COALESCE(b.harga_jual, 0)                        AS price,
         COALESCE(b.harga_jual_eceran, 0)                 AS price_eceran,
         COALESCE(b.kategori, 'Umum')                     AS category,
-        b.satuan_eceran                                  AS satuan_eceran,
         b.isi_per_satuan                                 AS isi_per_satuan
     FROM stok_barang gs
     LEFT JOIN db_draft_barang.barang b
@@ -76,12 +79,16 @@ if (!$result) {
 
 $products = [];
 while ($row = mysqli_fetch_assoc($result)) {
-    $stockGrosir  = (float) $row['stock'];
-    $isiPerSatuan = $row['isi_per_satuan'] !== null ? (float) $row['isi_per_satuan'] : 0;
+    $totalEceran  = (float) $row['qty_eceran'];
+    $isiPerSatuan = $row['isi_per_satuan'] !== null ? (int) $row['isi_per_satuan'] : 0;
+    $isiPerSatuan = $isiPerSatuan > 0 ? $isiPerSatuan : 1;
 
-    // Stok eceran = stok grosir x isi per satuan. Kalau isi_per_satuan belum
-    // diisi di data barang, dianggap belum ada varian eceran untuk barang ini.
-    $stockEceran = $isiPerSatuan > 0 ? (int) floor($stockGrosir * $isiPerSatuan) : 0;
+    // "stock" (kartu grosir) = jumlah dus UTUH yang bisa dijual grosir.
+    // Sisa pcs yang belum cukup 1 dus tidak dihitung di sini.
+    $stockGrosir = stokTersediaGrosir($totalEceran, $isiPerSatuan);
+    // "stock_eceran" (kartu eceran) = seluruh total_eceran, karena dus utuh
+    // pun bisa dipecah buat dijual satuan kecil.
+    $stockEceran = stokTersediaEceran($totalEceran);
 
     $products[] = [
         'id'             => (int)   $row['id'],
@@ -89,11 +96,11 @@ while ($row = mysqli_fetch_assoc($result)) {
         'price'          => (float) $row['price'],
         'price_eceran'   => (float) $row['price_eceran'],
         'stock'          => (int)   $stockGrosir,
-        'stock_eceran'   => $stockEceran,
+        'stock_eceran'   => (int)   $stockEceran,
         'category'       => $row['category'],
         'satuan'         => $row['satuan'] ?? 'pcs',
         'satuan_eceran'  => $row['satuan_eceran'],
-        'isi_per_satuan' => $isiPerSatuan > 0 ? $isiPerSatuan : null,
+        'isi_per_satuan' => $isiPerSatuan > 1 ? $isiPerSatuan : null,
     ];
 }
 

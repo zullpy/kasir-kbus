@@ -287,6 +287,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Isi & cetak struk thermal 80mm memakai data hasil checkout + isi keranjang
+    // (dipanggil SEBELUM cart dikosongkan, supaya baris item masih ada).
+    function printReceipt(result, cartSnapshot, discPercent) {
+        const prTransNo = document.getElementById('prTransNo');
+        const prDate = document.getElementById('prDate');
+        const prTime = document.getElementById('prTime');
+        const prLines = document.getElementById('prLines');
+        const prSubtotal = document.getElementById('prSubtotal');
+        const prDisc = document.getElementById('prDisc');
+        const prPayLabel = document.getElementById('prPayLabel');
+        const prCash = document.getElementById('prCash');
+        const prChange = document.getElementById('prChange');
+
+        if (!prTransNo) return;
+
+        const now = new Date();
+        // Nomor urut harian sederhana ("#1"), sama seperti yang tampil di
+        // receipt-pane sebelum transaksi disimpan (rhTransNo), BUKAN kode_transaksi.
+        prTransNo.textContent = rhTransNo ? rhTransNo.textContent : '#1';
+        prDate.textContent = now.toLocaleDateString('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+        prTime.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+        prLines.innerHTML = cartSnapshot.map((it, idx) => `
+            <tr>
+                <td class="pr-col-no">${idx + 1}</td>
+                <td class="pr-col-item">
+                    <span class="pr-item-name">${escapeHtml(it.name)}${it.mode === 'eceran' ? ' <small>(ecr)</small>' : ''}</span>
+                </td>
+                <td class="pr-col-qty">${it.qty} ${escapeHtml(it.satuan || '')}</td>
+                <td class="pr-col-harga">${formatRupiah(it.price)}</td>
+                <td class="pr-col-subtotal">${formatRupiah(it.price * it.qty)}</td>
+            </tr>
+        `).join('');
+
+        prSubtotal.textContent = formatRupiah(result.subtotal);
+        prDisc.textContent = result.diskon > 0
+            ? '- ' + formatRupiah(result.diskon) + (discPercent ? ` (${discPercent}%)` : '')
+            : formatRupiah(0);
+
+        const payLabelMap = { cash: 'Cash', transfer: 'Transfer', qris: 'QRIS' };
+        prPayLabel.textContent = payLabelMap[result.metode_pembayaran] || 'Cash';
+        prCash.textContent = formatRupiah(result.cash);
+        prChange.textContent = formatRupiah(result.change);
+
+        window.print();
+    }
+
     async function checkout() {
         payBtn.disabled = true;
         payBtn.textContent = 'Memproses...';
@@ -320,8 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const printInfo = data.print && data.print.success ? '· Struk tercetak' : '· Struk belum tercetak';
-            showToast(`Transaksi ${data.kode_transaksi} berhasil · ${formatRupiah(data.total)} · Kembalian ${formatRupiah(data.change)} ${printInfo}`);
+            showToast(`Transaksi ${data.kode_transaksi} berhasil · ${formatRupiah(data.total)} · Kembalian ${formatRupiah(data.change)}`);
+
+            // Cetak struk thermal 80mm memakai snapshot keranjang saat ini
+            // (dipanggil sebelum cart dikosongkan di bawah).
+            printReceipt(data, cart, discPercent);
+
             await fetchTodayTransactionCount();
             updateTransactionNoDisplay();
             cart = [];

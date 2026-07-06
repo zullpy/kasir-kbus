@@ -11,15 +11,28 @@
  *   - Harga jual + konversi satuan -> database db_draft_barang, tabel `barang`
  *   - Riwayat verifikasi -> database db_kasir,  tabel `verifikasi_stok`
  *
- * STRUKTUR TABEL `stok_barang` (db_mbg):
- *   - id           INT (PK)   -> dipakai sebagai kunci ke `verifikasi_stok` di db_kasir
- *   - nama_barang  VARCHAR
- *   - satuan       VARCHAR    -> satuan besar, contoh: DUS
- *   - lokasi       VARCHAR    -> cabang/lokasi barang ini
- *   - qty          DECIMAL    -> stok dalam satuan besar (bisa pecahan, contoh 0.88 dus
- *                                karena penjualan eceran mengurangi qty secara pecahan,
- *                                lihat checkout.php: qty_dus_terpakai = qty_eceran / isi_per_satuan)
- *   - updated_at   DATETIME
+ * STRUKTUR TABEL `stok_barang` (db_mbg) -- SESUAI KOLOM ASLI DI DB:
+ *   - id            INT (PK)   -> dipakai sebagai kunci ke `verifikasi_stok` di db_kasir
+ *   - nama_barang   VARCHAR
+ *   - satuan        VARCHAR    -> satuan besar, contoh: DUS
+ *   - satuan_eceran VARCHAR    -> satuan kecil, contoh: PCS
+ *   - lokasi        VARCHAR    -> cabang/lokasi barang ini
+ *   - qty_grosir    DECIMAL    -> HANYA turunan/cache, disinkronkan ulang oleh
+ *                                 checkout.php dari qty_eceran. TIDAK dipakai
+ *                                 di file ini untuk hitungan, cuma buat
+ *                                 kompatibilitas sistem lain yang baca kolom ini.
+ *   - qty_eceran    DECIMAL    -> SOURCE OF TRUTH. Total stok dalam satuan
+ *                                 KECIL (pcs/kg/dst), SUDAH termasuk dus utuh
+ *                                 yang belum dibuka (bukan lagi qty dus
+ *                                 fraksional seperti versi lama file ini).
+ *   - updated_at    DATETIME
+ *
+ * PENTING (beda dari versi sebelumnya file ini): dulu file ini mengasumsikan
+ * ada kolom tunggal `qty` dalam satuan besar yang bisa pecahan (misal 0.88
+ * dus), dan mengonversi ke pcs dengan MENGALIKAN isi_per_satuan. Itu SUDAH
+ * TIDAK BERLAKU. Sekarang kolom `qty` itu tidak ada; yang dipakai adalah
+ * `qty_eceran` yang ISINYA SUDAH total pcs, jadi tidak perlu dikali lagi --
+ * cukup dipecah balik (dibagi) untuk ditampilkan sebagai "X Dus Y Pcs".
  *
  * STRUKTUR TABEL `barang` (db_draft_barang), dipakai untuk harga & konversi satuan:
  *   - id_barang       INT (PK, auto_increment) -- TIDAK dipakai untuk pencocokan (lihat catatan di bawah)
@@ -39,12 +52,14 @@
 
 const KOLOM_ID_BARANG          = 'id';           // stok_barang.id
 const KOLOM_NAMA_BARANG        = 'nama_barang';  // stok_barang.nama_barang
-const KOLOM_SATUAN             = 'satuan';       // stok_barang.satuan
+const KOLOM_SATUAN             = 'satuan';       // stok_barang.satuan (satuan besar, cuma buat fallback label)
+const KOLOM_SATUAN_ECERAN_STOK = 'satuan_eceran'; // stok_barang.satuan_eceran
 const KOLOM_LOKASI             = 'lokasi';       // stok_barang.lokasi
-const KOLOM_QTY                = 'qty';          // stok_barang.qty
+const KOLOM_QTY                = 'qty_eceran';   // stok_barang.qty_eceran -- SOURCE OF TRUTH (total satuan kecil)
 const KOLOM_NAMA_BARANG_DRAFT  = 'nama_barang';  // barang.nama_barang (db_draft_barang)
 const HARI_ROLLOVER_BULANAN    = 5;              // rollover & reset verifikasi baru jalan mulai tanggal segini
-const KOLOM_HARGA_JUAL         = 'harga_jual';   // barang.harga_jual
+const KOLOM_HARGA_BELI         = 'harga_eceran';   // barang.harga_jual (harga JUAL per satuan besar/dus)
+const KOLOM_HARGA_BELI_ECERAN  = 'harga_eceran'; // barang.harga_eceran (harga BELI/modal, SUDAH per satuan kecil/pcs)
 const KOLOM_SATUAN_BESAR       = 'satuan';       // barang.satuan
 const KOLOM_SATUAN_ECERAN      = 'satuan_eceran';// barang.satuan_eceran
 const KOLOM_ISI_PER_SATUAN     = 'isi_per_satuan'; // barang.isi_per_satuan
@@ -87,7 +102,9 @@ function tentukan_periode_aktif(): string
  * stok_barang dibaca dari db_mbg, verifikasi_stok dibaca/ditulis di db_kasir.
  *
  * Kalau periode berjalan belum ada (artinya baru masuk bulan baru / pertama kali dipakai):
- *  - baris periode SEBELUMNYA (kalau ada) di-snapshot stok_akhir-nya dari qty stok_barang saat itu
+ *  - baris periode SEBELUMNYA (kalau ada) di-snapshot stok_akhir-nya dari
+ *    qty_eceran stok_barang saat itu (total satuan kecil, SUDAH termasuk dus
+ *    utuh yang belum dibuka -- bukan lagi fraksi dus seperti versi lama)
  *  - baris periode BARU dibuat dengan persediaan_awal = stok_akhir snapshot tadi (carry-over)
  *  - KHUSUS kalau ini periode PERTAMA untuk barang tsb (belum ada histori verifikasi
  *    sama sekali sebelumnya), persediaan_awal = 0, bukan qty live saat ini. Baru bulan
@@ -100,7 +117,7 @@ function jalankan_rollover_bulanan(mysqli $koneksi_mbg, mysqli $koneksi_kasir): 
 
     $sql_stok = "SELECT " . KOLOM_ID_BARANG . " AS id_barang,
                         " . KOLOM_QTY     . " AS qty,
-                        " . KOLOM_SATUAN  . " AS satuan
+                        " . KOLOM_SATUAN_ECERAN_STOK . " AS satuan
                  FROM stok_barang";
     $hasil_stok = mysqli_query($koneksi_mbg, $sql_stok);
     if (!$hasil_stok) {
@@ -167,7 +184,10 @@ function jalankan_rollover_bulanan(mysqli $koneksi_mbg, mysqli $koneksi_kasir): 
 
 /**
  * Ambil data gabungan untuk ditampilkan di tabel:
- * - stok_barang diambil dari db_mbg
+ * - stok_barang diambil dari db_mbg. Kolom `qty` di array hasil di sini
+ *   sebenarnya isinya qty_eceran (source of truth, total satuan kecil) --
+ *   nama variabelnya tetap "qty" biar tidak mengubah nama field yang sudah
+ *   dipakai stok-barang.php, tapi ISINYA sudah dalam satuan kecil.
  * - verifikasi_stok periode berjalan diambil dari db_kasir, digabung di PHP lewat id_barang
  * - harga_jual + konversi satuan (satuan besar/eceran/isi_per_satuan) diambil dari
  *   db_draft_barang.barang, digabung di PHP lewat NAMA BARANG (bukan id, lihat catatan di atas)
@@ -189,6 +209,7 @@ function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $kon
     if ($hasil) {
         while ($baris = mysqli_fetch_assoc($hasil)) {
             $baris['harga_jual']             = 0;
+            $baris['harga_beli_eceran']      = 0; // modal per pcs (barang.harga_eceran), dipakai buat valuasi nilai stok
             $baris['satuan_besar']           = $baris['satuan']; // fallback kalau tidak ketemu di barang
             $baris['satuan_eceran']          = null;
             $baris['isi_per_satuan']         = 0;
@@ -239,7 +260,8 @@ function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $kon
 
     // ---- Gabungkan harga_jual + konversi satuan dari db_draft_barang (kunci: NAMA BARANG) ----
     $sql_barang = "SELECT " . KOLOM_NAMA_BARANG_DRAFT . " AS nama_barang,
-                          " . KOLOM_HARGA_JUAL         . " AS harga_jual,
+                          " . KOLOM_HARGA_BELI         . " AS harga_eceran,
+                          " . KOLOM_HARGA_BELI_ECERAN  . " AS harga_beli_eceran,
                           " . KOLOM_SATUAN_BESAR       . " AS satuan_besar,
                           " . KOLOM_SATUAN_ECERAN      . " AS satuan_eceran,
                           " . KOLOM_ISI_PER_SATUAN     . " AS isi_per_satuan
@@ -259,10 +281,11 @@ function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $kon
         $kunci = normalisasi_nama($baris['nama_barang']);
         if (isset($peta_barang[$kunci])) {
             $b = $peta_barang[$kunci];
-            $data[$id]['harga_jual']     = $b['harga_jual'];
-            $data[$id]['satuan_besar']   = $b['satuan_besar'] ?: $baris['satuan'];
-            $data[$id]['satuan_eceran']  = $b['satuan_eceran'];
-            $data[$id]['isi_per_satuan'] = $b['isi_per_satuan'] !== null ? (float) $b['isi_per_satuan'] : 0;
+            $data[$id]['harga_beli']        = $b['harga_eceran'];
+            $data[$id]['harga_beli_eceran'] = $b['harga_beli_eceran'];
+            $data[$id]['satuan_besar']      = $b['satuan_besar'] ?: $baris['satuan'];
+            $data[$id]['satuan_eceran']     = $b['satuan_eceran'];
+            $data[$id]['isi_per_satuan']    = $b['isi_per_satuan'] !== null ? (float) $b['isi_per_satuan'] : 0;
         }
     }
 
@@ -282,29 +305,32 @@ function format_angka($angka): string
 }
 
 /**
- * Pecah qty satuan besar (dus, bisa pecahan seperti 0.88) menjadi kombinasi
- * satuan besar utuh + sisa satuan eceran, memakai isi_per_satuan dari
- * db_draft_barang.barang. Contoh: qty=0.88 dus, isi_per_satuan=15 pcs/dus
- * -> "13 Pcs". qty=1.2 dus -> "1 Dus 3 Pcs".
+ * Pecah TOTAL stok dalam satuan kecil (qty_eceran, sudah termasuk dus utuh
+ * yang belum dibuka) jadi kombinasi satuan besar utuh + sisa satuan kecil,
+ * memakai isi_per_satuan dari db_draft_barang.barang.
+ * Contoh: totalEceran=47, isi_per_satuan=24 -> "1 Dus 23 Pcs".
  *
- * Kalau isi_per_satuan tidak diketahui (0/null), qty ditampilkan apa adanya
- * dalam satuan besar saja, contoh "0.88 Dus".
+ * PENTING: berbeda dari versi lama fungsi ini -- input di sini SUDAH total
+ * pcs, BUKAN qty dalam satuan besar yang perlu dikali isi_per_satuan lagi.
+ * Mengalikannya lagi akan menghasilkan angka yang salah (dobel).
+ *
+ * Kalau isi_per_satuan tidak diketahui (0/null), barang dianggap tidak punya
+ * varian satuan besar -> ditampilkan apa adanya dalam satuan KECIL, misal "47 Pcs".
  */
-function format_qty_dus_pcs($qtyDus, ?string $satuanBesar, ?string $satuanEceran, $isiPerSatuan): string
+function format_qty_dus_pcs($totalEceran, ?string $satuanBesar, ?string $satuanEceran, $isiPerSatuan): string
 {
-    $qtyDus       = (float) $qtyDus;
+    $totalEceran  = (float) $totalEceran;
     $isiPerSatuan = (float) $isiPerSatuan;
 
     $satuanBesarTampil  = $satuanBesar ? ucfirst(strtolower($satuanBesar)) : 'Dus';
     $satuanEceranTampil = $satuanEceran ? ucfirst(strtolower($satuanEceran)) : 'Pcs';
 
     if ($isiPerSatuan <= 0) {
-        return trim(format_angka($qtyDus) . ' ' . $satuanBesarTampil);
+        return trim(format_angka($totalEceran) . ' ' . $satuanEceranTampil);
     }
 
-    $totalEceran = round($qtyDus * $isiPerSatuan, 2);
-    $dusUtuh     = (int) floor(($totalEceran / $isiPerSatuan) + 0.0000001);
-    $sisaEceran  = round($totalEceran - ($dusUtuh * $isiPerSatuan));
+    $dusUtuh    = (int) floor(($totalEceran / $isiPerSatuan) + 0.0000001);
+    $sisaEceran = round($totalEceran - ($dusUtuh * $isiPerSatuan), 2);
 
     // Jaga-jaga hasil pembulatan bikin sisa sama/lebih dari 1 satuan besar
     if ($sisaEceran >= $isiPerSatuan) {

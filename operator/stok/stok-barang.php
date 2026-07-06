@@ -49,7 +49,10 @@ foreach ($daftar_stok as $item) {
     }
 }
 
-// Total nilai stok yang belum terjual = Qty (stok akhir) x Harga Jual, dijumlah semua barang.
+// Total nilai stok yang belum terjual = Qty (stok akhir, dalam PCS) x harga BELI
+// per pcs, dijumlah semua barang. Pakai harga_beli_eceran (barang.harga_eceran)
+// karena kolom itu sudah harga modal DALAM SATUAN KECIL (pcs) -- tidak perlu
+// dikonversi/dibagi isi_per_satuan lagi, beda dengan harga_jual yang per DUS.
 // Total selisih = jumlah Qty Fisik - Qty Sistem (snapshot saat verifikasi) dari SEMUA barang
 // berstatus 'tidak_sesuai' yang sudah punya data qty_fisik, dijumlah langsung sebagai angka
 // (bukan dikonversi ke rupiah). Contoh: barang A selisih 1, barang B selisih 3 -> total 4.
@@ -57,7 +60,7 @@ $total_nilai_stok   = 0;
 $total_selisih_qty  = 0;
 
 foreach ($daftar_stok as $item) {
-    $total_nilai_stok += ((float) $item['qty']) * ((float) $item['harga_jual']);
+    $total_nilai_stok += ((float) $item['qty']) * ((float) $item['harga_beli_eceran']);
 
     if (
         $item['status_verifikasi'] === 'tidak_sesuai'
@@ -132,7 +135,7 @@ $label_periode = $nama_bulan[(int) $bulan_aktif] . ' ' . $tahun_aktif;
                         <th>Lokasi</th>
                         <th>Persediaan Awal</th>
                         <th>Qty (Stok Akhir)</th>
-                        <th>Harga Jual</th>
+                        <th>Harga Beli</th>
                         <th>Verifikasi Faktual</th>
                         <th>Selisih</th>
                         <th>Keterangan</th>
@@ -156,7 +159,7 @@ $label_periode = $nama_bulan[(int) $bulan_aktif] . ' ' . $tahun_aktif;
                         )
                         : '-';
 
-                    $harga_text = format_rupiah($item['harga_jual']);
+                    $harga_text = format_rupiah($item['harga_beli']);
                     $status     = $item['status_verifikasi'] ?: '';
                     $keterangan = $item['keterangan'] ?? '';
 

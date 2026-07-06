@@ -409,34 +409,20 @@ body {
 .store-logo {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.logo-mark {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--amber);
-    color: var(--forest);
-    display: flex;
-    align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
 }
 
-.logo-mark img {
-    width: 18px;
-    height: 18px;
+.logo-kbus {
+    height: 56px;
+    width: auto;
+    object-fit: contain;
+    margin-right: -6px;
 }
 
-.store-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    line-height: 1.05;
-    letter-spacing: .02em;
-    color: var(--forest);
-    text-align: left;
+.logo-busmart {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
 }
 
 .store-address {
@@ -464,6 +450,11 @@ body {
     justify-content: center;
     align-items: center;
     gap: 10px;
+}
+
+.receipt-meta-row.split {
+    width: 100%;
+    justify-content: space-between;
 }
 
 .receipt-meta-row span {
@@ -1039,4 +1030,164 @@ body {
 .pm-option:has(input:checked) .pm-radio-dot {
     opacity: 1;
     transform: scale(1);
+}
+
+/* ============================
+   Struk cetak thermal 80mm
+   Elemen ini disembunyikan di layar biasa,
+   hanya ditampilkan saat window.print() dipanggil.
+   ============================ */
+.print-receipt {
+    display: none;
+}
+
+@media print {
+
+    /* Sembunyikan seluruh halaman, tampilkan hanya struk */
+    body * {
+        visibility: hidden;
+    }
+
+    .print-receipt,
+    .print-receipt * {
+        visibility: visible;
+    }
+
+    .print-receipt {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 80mm;
+        padding: 3mm 3mm 4mm;
+        margin: 0;
+        color: #000;
+        background: #fff;
+        font-family: 'IBM Plex Mono', 'Courier New', monospace;
+        font-size: 10.5px;
+        line-height: 1.4;
+    }
+
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+}
+
+.pr-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.pr-logo-kbus {
+    height: 42px;
+    width: auto;
+    object-fit: contain;
+    margin-right: -5px;
+}
+
+.pr-logo-busmart {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+}
+
+.pr-address {
+    text-align: center;
+    font-size: 10px;
+    line-height: 1.5;
+    margin-top: 3px;
+}
+
+.pr-divider {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+}
+
+.pr-meta-row {
+    font-size: 10.5px;
+    text-align: center;
+}
+
+.pr-meta-split {
+    display: flex;
+    justify-content: space-between;
+}
+
+.pr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5px;
+}
+
+.pr-table th {
+    text-align: left;
+    font-weight: 700;
+    padding: 0 0 3px;
+    border-bottom: 1px dashed #000;
+}
+
+.pr-table td {
+    padding: 2px 0;
+    vertical-align: top;
+}
+
+.pr-col-no {
+    width: 8%;
+}
+
+.pr-col-item {
+    width: 38%;
+}
+
+.pr-col-qty {
+    width: 14%;
+    text-align: center;
+}
+
+.pr-col-harga,
+.pr-col-subtotal {
+    width: 20%;
+    text-align: right;
+}
+
+.pr-table td.pr-col-no {
+    text-align: left;
+}
+
+.pr-table td.pr-col-qty {
+    text-align: center;
+}
+
+.pr-table td.pr-col-harga,
+.pr-table td.pr-col-subtotal {
+    text-align: right;
+}
+
+.pr-item-name small {
+    display: block;
+    font-size: 8.5px;
+}
+
+.pr-totals {
+    font-size: 10.5px;
+}
+
+.pr-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1.5px 0;
+}
+
+.pr-total span {
+    font-weight: 700;
+    font-size: 11.5px;
+}
+
+.pr-thanks {
+    text-align: center;
+    font-size: 9.5px;
+    margin: 4px 0 0;
 }

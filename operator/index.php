@@ -41,10 +41,8 @@ require_once '../database/koneksi.php';
                         <div class="receipt-body">
                             <div class="receipt-header">
                                 <div class="store-logo">
-                                    <div class="logo-mark">
-                                        <img src="../assets/logo.png" alt="">
-                                    </div>
-                                    <span class="store-title">BUS<br>MART</span>
+                                    <img src="../assets/struk.png" alt="KBUS" class="logo-kbus">
+                                    <img src="../assets/logostruk.png" alt="BUS MART" class="logo-busmart">
                                 </div>
                                 <div class="store-address">
                                     <span>Kp. Cibengang Desa Sodonghilir</span>
@@ -54,7 +52,7 @@ require_once '../database/koneksi.php';
                             <div class="receipt-divider"></div>
                             <div class="receipt-meta">
                                 <div class="receipt-meta-row"><b id="rhTransNo">#1</b></div>
-                                <div class="receipt-meta-row">
+                                <div class="receipt-meta-row split">
                                     <span>Tanggal : <b id="rhDate"></b></span>
                                     <span>Jam : <b id="rhTime"></b></span>
                                 </div>
@@ -144,6 +142,46 @@ require_once '../database/koneksi.php';
             </main>
         </div>
         <div class="toast" id="toast"></div>
+
+        <!-- Struk cetak thermal 80mm (hanya tampil saat window.print()) -->
+        <div class="print-receipt" id="printReceipt">
+            <div class="pr-header">
+                <img src="../assets/struk.png" class="pr-logo-kbus" alt="KBUS">
+                <img src="../assets/logostruk.png" class="pr-logo-busmart" alt="BUS MART">
+            </div>
+            <div class="pr-address">
+                Kp. Cibengang Desa Sodonghilir<br>
+                Kecamatan Sodonghilir
+            </div>
+            <div class="pr-divider"></div>
+            <div class="pr-meta-row"><b id="prTransNo">#1</b></div>
+            <div class="pr-meta-row pr-meta-split">
+                <span>Tanggal: <b id="prDate"></b></span>
+                <span>Jam: <b id="prTime"></b></span>
+            </div>
+            <div class="pr-divider"></div>
+            <table class="pr-table">
+                <thead>
+                    <tr>
+                        <th class="pr-col-no">No</th>
+                        <th class="pr-col-item">Item</th>
+                        <th class="pr-col-qty">Qty</th>
+                        <th class="pr-col-harga">Harga</th>
+                        <th class="pr-col-subtotal">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody id="prLines"></tbody>
+            </table>
+            <div class="pr-divider"></div>
+            <div class="pr-totals">
+                <div class="pr-row"><span>Total Belanja</span><span id="prSubtotal">Rp0</span></div>
+                <div class="pr-row"><span>Disc</span><span id="prDisc">Rp0</span></div>
+                <div class="pr-row"><span id="prPayLabel">Cash</span><span id="prCash">Rp0</span></div>
+                <div class="pr-row"><span>Change</span><span id="prChange">Rp0</span></div>
+            </div>
+            <div class="pr-divider"></div>
+            <p class="pr-thanks">Terima kasih sudah belanja ditempat kami</p>
+        </div>
     </div>
     <script>
         // Data produk awal dikirim dari PHP ke JS

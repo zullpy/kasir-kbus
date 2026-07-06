@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 session_start();
 require_once '../database/koneksi.php';
+require_once '../includes/stok_helper.php'; // konversi satuan besar <-> kecil (source of truth: kolom qty_eceran)
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -55,7 +56,7 @@ foreach ($items as $item) {
         exit;
     }
 
-    // Ambil id, harga, dan faktor konversi dari db_draft_barang (sumber kebenaran harga)
+    // Ambil id, harga, & rasio konversi dari db_draft_barang (sumber kebenaran harga)
     $stmtBarang = mysqli_prepare(
         $koneksi_draft,
         "SELECT id_barang, harga_jual, harga_jual_eceran, isi_per_satuan
@@ -71,38 +72,40 @@ foreach ($items as $item) {
         exit;
     }
 
-    $idBarang     = (int) $rowBarang['id_barang'];
-    $isiPerSatuan = $rowBarang['isi_per_satuan'] !== null ? (float) $rowBarang['isi_per_satuan'] : 0;
+    $idBarang    = (int) $rowBarang['id_barang'];
+    // 1 satuan besar (dus/karung) = berapa satuan kecil (pcs/kg). Fallback 1
+    // kalau barang tidak punya varian satuan besar (langsung mode eceran saja).
+    $isiPerSatuan = (int) ($rowBarang['isi_per_satuan'] ?? 1);
+    $isiPerSatuan = $isiPerSatuan > 0 ? $isiPerSatuan : 1;
 
     // Harga mengikuti mode: grosir pakai harga_jual, eceran pakai harga_jual_eceran
     $hargaFinal = $mode === 'eceran' ? (float) $rowBarang['harga_jual_eceran'] : (float) $rowBarang['harga_jual'];
 
-    if ($mode === 'eceran' && $isiPerSatuan <= 0) {
-        echo json_encode(['success' => false, 'message' => "Barang \"$namaBarang\" belum punya konversi eceran (isi_per_satuan)."]);
-        exit;
-    }
-
-    // Stok grosir (master) dari db_mbg.stok_barang, per lokasi
+    // ── Stok: SOURCE OF TRUTH tunggal untuk VALIDASI & PENGURANGAN ada di
+    // kolom qty_eceran (total dalam satuan kecil). Kolom qty_grosir TIDAK
+    // dibaca/dipakai untuk validasi di sini, tapi TETAP disinkronkan ulang
+    // (ditulis) setelah stok dipotong, karena masih dibaca langsung oleh
+    // sistem/web lain di luar kasir ini.
     $stmtStok = mysqli_prepare(
         $koneksi_mbg,
-        "SELECT qty FROM stok_barang WHERE nama_barang = ? AND lokasi = ? LIMIT 1"
+        "SELECT qty_eceran FROM stok_barang WHERE nama_barang = ? AND lokasi = ? LIMIT 1"
     );
     mysqli_stmt_bind_param($stmtStok, 'ss', $namaBarang, $lokasi);
     mysqli_stmt_execute($stmtStok);
     $rowStok = mysqli_fetch_assoc(mysqli_stmt_get_result($stmtStok));
     mysqli_stmt_close($stmtStok);
 
-    $stokGrosirTersedia = $rowStok ? (float) $rowStok['qty'] : 0;
+    $totalEceranTersedia = $rowStok ? (float) $rowStok['qty_eceran'] : 0;
 
-    // Kalau mode eceran, qty yang dikurangi dari stok grosir dalam bentuk pecahan dus
-    $qtyDusTerpakai = $mode === 'eceran' ? ($qty / $isiPerSatuan) : $qty;
+    // Konversi qty yang diminta (dalam satuan sesuai mode) ke satuan kecil,
+    // baru dibandingkan ke total yang tersedia.
+    $qtyEceranDibutuhkan = konversiKeEceran($qty, $mode, $isiPerSatuan);
 
-    if ($stokGrosirTersedia < $qtyDusTerpakai) {
-        $stokEceranTersedia = $isiPerSatuan > 0 ? floor($stokGrosirTersedia * $isiPerSatuan) : 0;
-        $sisaTampil = $mode === 'eceran' ? $stokEceranTersedia : $stokGrosirTersedia;
+    if ($totalEceranTersedia < $qtyEceranDibutuhkan) {
+        $sisaFormatted = formatStokCampuran($totalEceranTersedia, $isiPerSatuan);
         echo json_encode([
             'success' => false,
-            'message' => "Stok \"$namaBarang\" tidak cukup. Tersisa: $sisaTampil.",
+            'message' => "Stok \"$namaBarang\" tidak cukup. Tersisa: $sisaFormatted.",
         ]);
         exit;
     }
@@ -111,12 +114,14 @@ foreach ($items as $item) {
     $subtotal    += $itemSubtotal;
 
     $validatedItems[] = [
-        'id_barang'       => $idBarang,
-        'nama'            => $namaBarang,
-        'harga'           => $hargaFinal,
-        'qty'             => $qty,
-        'subtotal'        => $itemSubtotal,
-        'qty_dus_terpakai' => $qtyDusTerpakai,
+        'id_barang'             => $idBarang,
+        'nama'                  => $namaBarang,
+        'harga'                 => $hargaFinal,
+        'qty'                   => $qty,
+        'subtotal'              => $itemSubtotal,
+        'mode'                  => $mode,
+        'qty_eceran_dibutuhkan' => $qtyEceranDibutuhkan, // sudah dikonversi, siap dipotong dari qty_eceran
+        'isi_per_satuan'        => $isiPerSatuan,          // dipakai buat sinkronkan ulang qty_grosir
     ];
 }
 
@@ -175,9 +180,23 @@ try {
         "INSERT INTO transaksi_detail (id_transaksi, id_barang, nama_barang, harga, qty, subtotal)
          VALUES (?, ?, ?, ?, ?, ?)"
     );
+    // Statement 1: qty_eceran (source of truth) dipotong sejumlah
+    // qty_eceran_dibutuhkan (sudah dikonversi ke satuan kecil, apapun mode-nya).
+    // Tidak ada lagi hack "nolkan sisi lain" -> karena cuma ada satu angka,
+    // tidak ada dua sisi yang bisa tidak sinkron.
     $stmtKurangi = mysqli_prepare(
         $koneksi_mbg,
-        "UPDATE stok_barang SET qty = qty - ? WHERE nama_barang = ? AND lokasi = ?"
+        "UPDATE stok_barang SET qty_eceran = qty_eceran - ? WHERE nama_barang = ? AND lokasi = ?"
+    );
+
+    // Statement 2: qty_grosir DISINKRONKAN ULANG (bukan dipotong manual) dari
+    // qty_eceran yang baru. Ini WAJIB karena kolom qty_grosir masih dibaca
+    // langsung oleh sistem/web lain di luar kasir ini, jadi harus tetap
+    // akurat di database, bukan cuma dihitung on-the-fly di sisi kasir.
+    // Dijalankan SETELAH statement 1, supaya baca nilai qty_eceran terbaru.
+    $stmtSyncGrosir = mysqli_prepare(
+        $koneksi_mbg,
+        "UPDATE stok_barang SET qty_grosir = FLOOR(qty_eceran / ?) WHERE nama_barang = ? AND lokasi = ?"
     );
 
     foreach ($validatedItems as $item) {
@@ -189,12 +208,19 @@ try {
 
         mysqli_stmt_bind_param(
             $stmtKurangi, 'dss',
-            $item['qty_dus_terpakai'], $item['nama'], $lokasi
+            $item['qty_eceran_dibutuhkan'], $item['nama'], $lokasi
         );
         mysqli_stmt_execute($stmtKurangi);
+
+        mysqli_stmt_bind_param(
+            $stmtSyncGrosir, 'iss',
+            $item['isi_per_satuan'], $item['nama'], $lokasi
+        );
+        mysqli_stmt_execute($stmtSyncGrosir);
     }
     mysqli_stmt_close($stmtDetail);
     mysqli_stmt_close($stmtKurangi);
+    mysqli_stmt_close($stmtSyncGrosir);
 
     mysqli_commit($koneksi_kasir);
     mysqli_commit($koneksi_mbg);
