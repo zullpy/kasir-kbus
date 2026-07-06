@@ -3,12 +3,15 @@
 session_start();
 require_once __DIR__ . '/../../database/koneksi.php'; // sesuaikan path ke koneksi.php
 
-if (!isset($_SESSION['branch'])) {
+$__role = $_SESSION['role'] ?? '';
+$__isAdmin = $__role === 'admin';
+
+if (!$__isAdmin && !isset($_SESSION['branch'])) {
     header('Location: ../../index.php');
     exit;
 }
 
-$cabang  = $_SESSION['branch'];
+$cabang  = $_SESSION['branch'] ?? '';
 $pesan   = '';
 $error   = '';
 
@@ -20,61 +23,64 @@ if (!is_dir($dirTtd))   mkdir($dirTtd, 0755, true);
 
 // ==== Proses submit form setoran ====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi']) && $_POST['aksi'] === 'simpan_setoran') {
-
-    $saldo_kasir      = str_replace(['.', ','], ['', '.'], $_POST['saldo_kasir'] ?? '0');
-    $setoran_koperasi = str_replace(['.', ','], ['', '.'], $_POST['setoran_koperasi'] ?? '0');
-    $saldo_kasir      = is_numeric($saldo_kasir) ? (float) $saldo_kasir : 0;
-    $setoran_koperasi = is_numeric($setoran_koperasi) ? (float) $setoran_koperasi : 0;
-    $tanggal      = date('Y-m-d');
-
-    // --- Upload bukti transfer ---
-    $namaBukti = null;
-    if (!empty($_FILES['bukti_tf']['name']) && $_FILES['bukti_tf']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['bukti_tf']['name'], PATHINFO_EXTENSION));
-        $allowedExt = ['jpg', 'jpeg', 'png', 'pdf'];
-        if (in_array($ext, $allowedExt)) {
-            $namaBukti = 'bukti_' . $cabang . '_' . date('Ymd_His') . '.' . $ext;
-            move_uploaded_file($_FILES['bukti_tf']['tmp_name'], $dirBukti . $namaBukti);
-        } else {
-            $error = 'Format bukti transfer harus JPG, PNG, atau PDF.';
-        }
+    if ($__isAdmin) {
+        $error = 'Admin tidak diperbolehkan menginput setoran.';
     } else {
-        $error = 'Bukti transfer wajib diunggah.';
-    }
+        $saldo_kasir      = str_replace(['.', ','], ['', '.'], $_POST['saldo_kasir'] ?? '0');
+        $setoran_koperasi = str_replace(['.', ','], ['', '.'], $_POST['setoran_koperasi'] ?? '0');
+        $saldo_kasir      = is_numeric($saldo_kasir) ? (float) $saldo_kasir : 0;
+        $setoran_koperasi = is_numeric($setoran_koperasi) ? (float) $setoran_koperasi : 0;
+        $tanggal      = date('Y-m-d');
 
-    // --- Simpan tanda tangan (base64 dari canvas) ---
-    $namaTtd = null;
-    if (empty($error) && !empty($_POST['tanda_tangan_data'])) {
-        $data = $_POST['tanda_tangan_data'];
-        if (preg_match('/^data:image\/(png|jpeg);base64,/', $data, $m)) {
-            $data = substr($data, strpos($data, ',') + 1);
-            $data = base64_decode($data);
-            if ($data !== false) {
-                $namaTtd = 'ttd_' . $cabang . '_' . date('Ymd_His') . '.png';
-                file_put_contents($dirTtd . $namaTtd, $data);
+        // --- Upload bukti transfer ---
+        $namaBukti = null;
+        if (!empty($_FILES['bukti_tf']['name']) && $_FILES['bukti_tf']['error'] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($_FILES['bukti_tf']['name'], PATHINFO_EXTENSION));
+            $allowedExt = ['jpg', 'jpeg', 'png', 'pdf'];
+            if (in_array($ext, $allowedExt)) {
+                $namaBukti = 'bukti_' . $cabang . '_' . date('Ymd_His') . '.' . $ext;
+                move_uploaded_file($_FILES['bukti_tf']['tmp_name'], $dirBukti . $namaBukti);
+            } else {
+                $error = 'Format bukti transfer harus JPG, PNG, atau PDF.';
             }
         } else {
+            $error = 'Bukti transfer wajib diunggah.';
+        }
+
+        // --- Simpan tanda tangan (base64 dari canvas) ---
+        $namaTtd = null;
+        if (empty($error) && !empty($_POST['tanda_tangan_data'])) {
+            $data = $_POST['tanda_tangan_data'];
+            if (preg_match('/^data:image\/(png|jpeg);base64,/', $data, $m)) {
+                $data = substr($data, strpos($data, ',') + 1);
+                $data = base64_decode($data);
+                if ($data !== false) {
+                    $namaTtd = 'ttd_' . $cabang . '_' . date('Ymd_His') . '.png';
+                    file_put_contents($dirTtd . $namaTtd, $data);
+                }
+            } else {
+                $error = 'Tanda tangan kasir wajib diisi.';
+            }
+        } elseif (empty($error)) {
             $error = 'Tanda tangan kasir wajib diisi.';
         }
-    } elseif (empty($error)) {
-        $error = 'Tanda tangan kasir wajib diisi.';
-    }
 
-    if (empty($error)) {
-        $stmt = mysqli_prepare($koneksi_kasir,
-            "INSERT INTO setoran (cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'pending')");
-        mysqli_stmt_bind_param($stmt, 'ssddss', $cabang, $tanggal, $saldo_kasir, $setoran_koperasi, $namaBukti, $namaTtd);
-        $sukses = mysqli_stmt_execute($stmt);
-        if (!$sukses) {
-            $error = 'Gagal menyimpan setoran: ' . mysqli_error($koneksi_kasir);
-        }
-        mysqli_stmt_close($stmt);
+        if (empty($error)) {
+            $stmt = mysqli_prepare($koneksi_kasir,
+                "INSERT INTO setoran (cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status)
+                 VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+            mysqli_stmt_bind_param($stmt, 'ssddss', $cabang, $tanggal, $saldo_kasir, $setoran_koperasi, $namaBukti, $namaTtd);
+            $sukses = mysqli_stmt_execute($stmt);
+            if (!$sukses) {
+                $error = 'Gagal menyimpan setoran: ' . mysqli_error($koneksi_kasir);
+            }
+            mysqli_stmt_close($stmt);
 
-        if ($sukses) {
-            // Redirect supaya reload (F5) tidak submit ulang form yang sama
-            header('Location: ' . $_SERVER['PHP_SELF'] . '?sukses=1');
-            exit;
+            if ($sukses) {
+                // Redirect supaya reload (F5) tidak submit ulang form yang sama
+                header('Location: ' . $_SERVER['PHP_SELF'] . '?sukses=1');
+                exit;
+            }
         }
     }
 }
@@ -85,12 +91,18 @@ if (isset($_GET['sukses']) && $_GET['sukses'] === '1') {
 }
 
 // ==== Ambil data setoran untuk tabel ====
-$stmt = mysqli_prepare($koneksi_kasir,
-    "SELECT id, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
-     FROM setoran WHERE cabang = ? ORDER BY created_at DESC LIMIT 100");
-mysqli_stmt_bind_param($stmt, 's', $cabang);
-mysqli_stmt_execute($stmt);
-$resultSetoran = mysqli_stmt_get_result($stmt);
+if ($__isAdmin) {
+    $resultSetoran = mysqli_query($koneksi_kasir,
+        "SELECT id, cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
+         FROM setoran ORDER BY created_at DESC LIMIT 100");
+} else {
+    $stmt = mysqli_prepare($koneksi_kasir,
+        "SELECT id, cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
+         FROM setoran WHERE cabang = ? ORDER BY created_at DESC LIMIT 100");
+    mysqli_stmt_bind_param($stmt, 's', $cabang);
+    mysqli_stmt_execute($stmt);
+    $resultSetoran = mysqli_stmt_get_result($stmt);
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -179,7 +191,9 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                     <h1>Laporan Setoran</h1>
                     <p class="subtitle">Input setoran harian dan riwayat setoran kasir</p>
                 </div>
+                <?php if (!$__isAdmin): ?>
                 <button type="button" class="btn-open-modal" onclick="bukaModalSetoran()">+ Input Setoran</button>
+                <?php endif; ?>
             </div>
 
             <?php if ($pesan): ?><div class="alert alert-success"><?= htmlspecialchars($pesan) ?></div><?php endif; ?>
@@ -191,6 +205,9 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                 <table>
                     <thead>
                         <tr>
+                            <?php if ($__isAdmin): ?>
+                                <th>Cabang</th>
+                            <?php endif; ?>
                             <th>Tanggal</th>
                             <th>Saldo Kasir</th>
                             <th>Setoran ke Koperasi</th>
@@ -204,6 +221,9 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                         <?php if (mysqli_num_rows($resultSetoran) > 0): ?>
                             <?php while ($row = mysqli_fetch_assoc($resultSetoran)): ?>
                                 <tr>
+                                    <?php if ($__isAdmin): ?>
+                                        <td><?= htmlspecialchars($row['cabang']) ?></td>
+                                    <?php endif; ?>
                                     <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
                                     <td>Rp <?= number_format($row['saldo_kasir'], 0, ',', '.') ?></td>
                                     <td>Rp <?= number_format($row['setoran_koperasi'], 0, ',', '.') ?></td>
@@ -230,7 +250,7 @@ $resultSetoran = mysqli_stmt_get_result($stmt);
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="7" class="empty-row">Belum ada data setoran.</td></tr>
+                            <tr><td colspan="<?= $__isAdmin ? 8 : 7 ?>" class="empty-row">Belum ada data setoran.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

@@ -1,8 +1,8 @@
 ---
 name: php-native-pos-audit-and-fix
-description: Audit and fix a PHP Native POS/cashier application — covering multi-DB data-source inconsistencies, checkout API design, cross-DB JOINs, sidebar path bugs, session guards, kasir profile UI, and multi-payment method (Cash/Transfer/QRIS) flow.
+description: Audit and fix a PHP Native POS/cashier application — covering multi-DB data-source inconsistencies, checkout API design, cross-DB JOINs, sidebar path bugs, session guards, kasir profile UI, multi-payment method (Cash/Transfer/QRIS) flow, and admin role restrictions with multi-branch reports.
 source: auto-skill
-extracted_at: '2026-07-05T09:02:52.712Z'
+extracted_at: '2026-07-06T06:50:00.000Z'
 ---
 
 # PHP Native POS — Audit & Fix Playbook
@@ -268,6 +268,50 @@ mysqli_stmt_bind_param(
 
 ---
 
+## 8. Admin Access Controls & Multi-Branch Report Visibility
+
+**Pattern:** Allow administrative users (with `$_SESSION['role'] === 'admin'`) to access reports across all branches, while restricting input capabilities (like processing/submitting branch deposits) and dynamically rendering UI fields (e.g. branch column).
+
+### Navigation & Guards
+- If a page requires the operator's branch, relax the guard to allow the admin without `$_SESSION['branch']`.
+- Dynamically alter paths or buttons based on role.
+
+```php
+$__role = $_SESSION['role'] ?? '';
+$__isAdmin = $__role === 'admin';
+
+// Guard check
+if (!$__isAdmin && !isset($_SESSION['branch'])) {
+    header('Location: ../../index.php');
+    exit;
+}
+```
+
+### Dynamic Data Selection
+Query all rows if the logged-in user is admin, or query by specific branch for operators.
+
+```php
+if ($__isAdmin) {
+    $resultSetoran = mysqli_query($koneksi_kasir,
+        "SELECT id, cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
+         FROM setoran ORDER BY created_at DESC LIMIT 100");
+} else {
+    $stmt = mysqli_prepare($koneksi_kasir,
+        "SELECT id, cabang, tanggal, saldo_kasir, setoran_koperasi, bukti_tf, tanda_tangan, status, created_at
+         FROM setoran WHERE cabang = ? ORDER BY created_at DESC LIMIT 100");
+    mysqli_stmt_bind_param($stmt, 's', $cabang);
+    mysqli_stmt_execute($stmt);
+    $resultSetoran = mysqli_stmt_get_result($stmt);
+}
+```
+
+### Table Column Visibility & Form Restrictions
+- Hide input/modal buttons (`+ Input Setoran`) for admin.
+- Validate on the server side: if an admin attempts a POST request to submit deposits, reject with an error message.
+- Show an extra "Cabang" column header and table cell when the logged-in user is an admin.
+
+---
+
 ## Checklist for any PHP Native POS audit
 
 - [ ] Verify all API endpoints called by JS actually exist on disk
@@ -278,3 +322,4 @@ mysqli_stmt_bind_param(
 - [ ] Confirm sidebar partial navigation paths work from all include depths
 - [ ] Check for hardcoded credentials and flag for replacement with DB-backed auth + `password_verify`
 - [ ] If multi-payment is needed, confirm `metode_pembayaran` column exists in the transactions table and all layers (HTML, JS, PHP API) handle Cash/Transfer/QRIS consistently
+- [ ] Check if administrative roles require view-only access to branch-specific data (e.g. setoran), and dynamically hide inputs/add branch columns as appropriate.

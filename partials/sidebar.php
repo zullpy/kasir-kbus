@@ -1,8 +1,10 @@
 <?php
-// Partial navigasi sidebar - dipakai di index.php, riwayat-transaksi.php, laporan-harian.php, laporan-setoran.php
+// Partial navigasi sidebar - dipakai bersama untuk operator & admin
 $__current = basename($_SERVER['PHP_SELF']);
+$__role    = $_SESSION['role'] ?? '';
+$__isAdmin = $__role === 'admin';
 
-// Data kasir dari session
+// Data kasir dari session (hanya relevan untuk operator)
 $__branch   = $_SESSION['branch'] ?? '';
 $__kasirMap = [
     'sodonghilir' => ['nama' => 'Kasir Sodonghilir', 'lokasi' => 'Kp. Cibengang, Sodonghilir'],
@@ -25,7 +27,8 @@ $__kasirInfo = $__kasirMap[$__branch] ?? ['nama' => 'Kasir', 'lokasi' => '-'];
     </div>
 
     <nav class="pos-nav">
-        <a href="/operator/index.php"
+        <?php if (!$__isAdmin) { ?>
+        <a href="<?= $__isAdmin ? '/operator/riwayat/riwayat-transaksi.php' : '/operator/index.php' ?>"
            class="nav-item <?= $__current === 'index.php' ? 'active' : '' ?>" title="Transaksi">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
@@ -33,6 +36,7 @@ $__kasirInfo = $__kasirMap[$__branch] ?? ['nama' => 'Kasir', 'lokasi' => '-'];
             </svg>
             <span>Transaksi</span>
         </a>
+        <?php } ?>
         <a href="/operator/riwayat/riwayat-transaksi.php"
            class="nav-item <?= $__current === 'riwayat-transaksi.php' ? 'active' : '' ?>" title="Riwayat Transaksi">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -66,17 +70,18 @@ $__kasirInfo = $__kasirMap[$__branch] ?? ['nama' => 'Kasir', 'lokasi' => '-'];
             </svg>
             <span>Laporan Setoran</span>
         </a>
-        <a href="/operator/laporan/laporan-laba-kotor-stok.php"
-           class="nav-item <?= $__current === 'laporan-laba-kotor-stok.php' ? 'active' : '' ?>" title="Rekap Laba Kotor Stok Barang">
+        <a href="/operator/laporan/laporan-laba-kotor.php"
+           class="nav-item <?= $__current === 'laporan-laba-kotor.php' ? 'active' : '' ?>" title="Rekap Laba Kotor Stok Barang">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M3 17l5-5 4 4 8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
                 <path d="M15 8h5v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <span>Rekap Laba Kotor Stok Barang</span>
+            <span>Rekap Laba Kotor</span>
         </a>
     </nav>
 
     <div class="sidebar-footer">
+        <?php if (!$__isAdmin): ?>
         <div class="kasir-card">
             <div class="kasir-avatar" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -95,8 +100,21 @@ $__kasirInfo = $__kasirMap[$__branch] ?? ['nama' => 'Kasir', 'lokasi' => '-'];
                 </span>
             </div>
         </div>
+        <?php else: ?>
+        <div class="kasir-card">
+            <div class="kasir-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+            </div>
+            <div class="kasir-info">
+                <span class="kasir-nama">Administrator</span>
+            </div>
+        </div>
+        <?php endif; ?>
         <span class="pos-date" id="posDate"></span>
-        <a href="/index.php" class="logout-btn" title="Keluar">
+        <a href="#" class="logout-btn" title="Keluar" onclick="event.preventDefault(); if (confirm('Apakah Anda yakin ingin keluar?')) { window.location.href = '/index.php'; }">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>

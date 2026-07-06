@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['passw
         if ($role === 'operator') {
             $_SESSION['branch'] = $branch;
         }
-        header('Location: ' . ($role === 'admin' ? 'admin/dashboard.php' : 'operator/index.php'));
+        header('Location: ' . ($role === 'admin' ? 'operator/riwayat/riwayat-transaksi.php' : 'operator/index.php'));
         exit;
     } else {
         $error = ($role === 'operator' && !isset($validPasswords['operator'][$branch]))

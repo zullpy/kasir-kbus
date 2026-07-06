@@ -5,7 +5,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'operator') {
-    header('Location: ' . str_repeat('../', substr_count($_SERVER['PHP_SELF'], '/') - 2) . 'index.php');
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'operator' && $_SESSION['role'] !== 'admin') {
+    // Hitung berapa level folder dari root berdasarkan path file, bukan jumlah '/' mentah.
+    $parts = explode('/', trim($_SERVER['PHP_SELF'], '/'));
+    $depth = count($parts) - 1; // -1 karena elemen terakhir adalah nama file (index.php)
+    header('Location: ' . str_repeat('../', $depth) . 'index.php');
     exit;
 }
