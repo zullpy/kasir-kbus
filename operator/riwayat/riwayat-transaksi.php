@@ -8,17 +8,59 @@ require_once '../../database/koneksi.php';
 $dariTanggal   = $_GET['dari'] ?? date('Y-m-d', strtotime('-6 days'));
 $sampaiTanggal = $_GET['sampai'] ?? date('Y-m-d');
 
+// Operator hanya boleh melihat riwayat transaksi cabangnya sendiri (kolom
+// `kasir` di tabel transaksi isinya sama persis dengan $_SESSION['branch'],
+// misal 'sariwangi'). Admin tidak dikunci ke satu cabang, tapi bisa memilih
+// filter cabang tertentu lewat tombol (?cabang=sariwangi dst); kalau tidak
+// pilih apa-apa, admin melihat gabungan semua cabang.
+$isOperator   = ($_SESSION['role'] ?? '') === 'operator';
+$daftarCabang = [
+    'sodonghilir' => 'Sodonghilir',
+    'sariwangi'   => 'Sariwangi',
+    'manonjaya'   => 'Manonjaya',
+];
+
+$kasirFilter = null;
+
+if ($isOperator) {
+    // Jaga-jaga: kalau operator tapi branch belum ke-set di session, jangan
+    // sampai bocor nampilin semua cabang -- paksa balik ke halaman login.
+    if (empty($_SESSION['branch'])) {
+        header('Location: /index.php');
+        exit;
+    }
+    $kasirFilter = $_SESSION['branch'];
+} else {
+    $cabangParam = $_GET['cabang'] ?? '';
+    if (isset($daftarCabang[$cabangParam])) {
+        $kasirFilter = $cabangParam;
+    }
+}
+
 $transaksiList = [];
 $totalOmzetFilter = 0;
 
-$stmt = mysqli_prepare(
-    $koneksi_kasir,
-    "SELECT id_transaksi, tanggal, subtotal, diskon, total, cash, kembalian
-     FROM transaksi
-     WHERE DATE(tanggal) BETWEEN ? AND ?
-     ORDER BY tanggal DESC"
-);
-mysqli_stmt_bind_param($stmt, 'ss', $dariTanggal, $sampaiTanggal);
+if ($kasirFilter !== null) {
+    $stmt = mysqli_prepare(
+        $koneksi_kasir,
+        "SELECT id_transaksi, tanggal, subtotal, diskon, total, cash, kembalian
+         FROM transaksi
+         WHERE DATE(tanggal) BETWEEN ? AND ?
+           AND LOWER(kasir) = LOWER(?)
+         ORDER BY tanggal DESC"
+    );
+    mysqli_stmt_bind_param($stmt, 'sss', $dariTanggal, $sampaiTanggal, $kasirFilter);
+} else {
+    $stmt = mysqli_prepare(
+        $koneksi_kasir,
+        "SELECT id_transaksi, tanggal, subtotal, diskon, total, cash, kembalian
+         FROM transaksi
+         WHERE DATE(tanggal) BETWEEN ? AND ?
+         ORDER BY tanggal DESC"
+    );
+    mysqli_stmt_bind_param($stmt, 'ss', $dariTanggal, $sampaiTanggal);
+}
+
 mysqli_stmt_execute($stmt);
 $resultTransaksi = mysqli_stmt_get_result($stmt);
 
@@ -97,6 +139,31 @@ function formatRupiahPhp($n)
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="shortcut icon" href="../..assets/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../style.css">
+    <style>
+        .cabang-tabs {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            background: #fff;
+            border: 1px solid #e3e6ea;
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        .cabang-tabs a {
+            text-decoration: none;
+            color: #6b7280;
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 7px;
+        }
+        .cabang-tabs a:hover { background: #f3f4f6; }
+        .cabang-tabs a.active {
+            background: #2563eb;
+            color: #fff;
+        }
+    </style>
 </head>
 
 <body>
@@ -110,6 +177,9 @@ function formatRupiahPhp($n)
                         <p><span id="rtCount"><?= count($transaksiList) ?></span> transaksi ·
                             Total <?= formatRupiahPhp($totalOmzetFilter) ?>
                             (<?= date('d M Y', strtotime($dariTanggal)) ?> &ndash; <?= date('d M Y', strtotime($sampaiTanggal)) ?>)
+                            <?php if ($kasirFilter !== null) : ?>
+                                · Cabang <?= htmlspecialchars($daftarCabang[$kasirFilter] ?? ucfirst($kasirFilter)) ?>
+                            <?php endif; ?>
                         </p>
                     </div>
                     <form class="filter-form" method="get">
@@ -120,6 +190,17 @@ function formatRupiahPhp($n)
                         <button type="submit">Terapkan</button>
                     </form>
                 </div>
+
+                <?php if (!$isOperator) : ?>
+                    <div class="cabang-tabs">
+                        <a href="?dari=<?= urlencode($dariTanggal) ?>&sampai=<?= urlencode($sampaiTanggal) ?>"
+                           class="<?= $kasirFilter === null ? 'active' : '' ?>">Semua Cabang</a>
+                        <?php foreach ($daftarCabang as $key => $label) : ?>
+                            <a href="?dari=<?= urlencode($dariTanggal) ?>&sampai=<?= urlencode($sampaiTanggal) ?>&cabang=<?= urlencode($key) ?>"
+                               class="<?= $kasirFilter === $key ? 'active' : '' ?>"><?= htmlspecialchars($label) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
 
                 <div class="toolbar">
                     <div class="search-box">

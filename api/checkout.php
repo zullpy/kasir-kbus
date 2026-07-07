@@ -140,11 +140,15 @@ if ($metodePembayaran === 'cash') {
 }
 
 // ── Generate kode transaksi: TRX-YYYYMMDD-XXXX ─────────────────────────────────
+// Nomor urut dihitung PER CABANG (kolom `kasir`), sinkron dengan cara
+// get-trans-count.php menghitung nomor yang ditampilkan di receipt-pane
+// SEBELUM transaksi ini disimpan.
 $tanggalHari = date('Ymd');
 $stmtCount   = mysqli_prepare(
     $koneksi_kasir,
-    "SELECT COUNT(*) AS total FROM transaksi WHERE DATE(tanggal) = CURDATE()"
+    "SELECT COUNT(*) AS total FROM transaksi WHERE DATE(tanggal) = CURDATE() AND LOWER(kasir) = LOWER(?)"
 );
+mysqli_stmt_bind_param($stmtCount, 's', $kasir);
 mysqli_stmt_execute($stmtCount);
 $rowCount      = mysqli_fetch_assoc(mysqli_stmt_get_result($stmtCount));
 mysqli_stmt_close($stmtCount);

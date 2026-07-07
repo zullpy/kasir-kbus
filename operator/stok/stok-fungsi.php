@@ -191,8 +191,13 @@ function jalankan_rollover_bulanan(mysqli $koneksi_mbg, mysqli $koneksi_kasir): 
  * - verifikasi_stok periode berjalan diambil dari db_kasir, digabung di PHP lewat id_barang
  * - harga_jual + konversi satuan (satuan besar/eceran/isi_per_satuan) diambil dari
  *   db_draft_barang.barang, digabung di PHP lewat NAMA BARANG (bukan id, lihat catatan di atas)
+ *
+ * @param string|null $lokasi_filter Kalau diisi (misal 'sariwangi'), hanya barang dengan
+ *                                   lokasi yang sama (tidak case-sensitive) yang diambil.
+ *                                   Dipakai untuk operator supaya hanya lihat stok cabangnya
+ *                                   sendiri. Kalau null/kosong, semua lokasi diambil (untuk admin).
  */
-function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $koneksi_draft): array
+function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $koneksi_draft, ?string $lokasi_filter = null): array
 {
     $sql_stok = "SELECT
                     " . KOLOM_ID_BARANG   . " AS id_barang,
@@ -200,8 +205,17 @@ function ambil_data_stok(mysqli $koneksi_mbg, mysqli $koneksi_kasir, mysqli $kon
                     " . KOLOM_SATUAN      . " AS satuan,
                     " . KOLOM_LOKASI      . " AS lokasi,
                     " . KOLOM_QTY         . " AS qty
-                 FROM stok_barang
-                 ORDER BY " . KOLOM_NAMA_BARANG . " ASC";
+                 FROM stok_barang";
+
+    // Operator hanya boleh melihat stok cabangnya sendiri (lokasi_filter diisi
+    // dari $_SESSION['branch']). Admin memanggil fungsi ini dengan
+    // $lokasi_filter = null sehingga semua cabang tampil, tidak difilter.
+    if ($lokasi_filter !== null && $lokasi_filter !== '') {
+        $lokasi_aman = mysqli_real_escape_string($koneksi_mbg, $lokasi_filter);
+        $sql_stok   .= " WHERE LOWER(" . KOLOM_LOKASI . ") = LOWER('{$lokasi_aman}')";
+    }
+
+    $sql_stok .= " ORDER BY " . KOLOM_NAMA_BARANG . " ASC";
 
     $hasil = mysqli_query($koneksi_mbg, $sql_stok);
     $data  = [];

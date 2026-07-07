@@ -3,6 +3,22 @@ session_start();
 require_once '../../database/koneksi.php';
 // $koneksi_kasir, $koneksi_mbg, $koneksi_draft tersedia dari koneksi.php
 
+// Operator hanya boleh melihat laba kotor cabangnya sendiri (kolom `kasir` di
+// tabel transaksi isinya sama persis dengan $_SESSION['branch']). Admin tidak
+// difilter, lihat gabungan semua cabang.
+$__isAdmin   = ($_SESSION['role'] ?? '') === 'admin';
+$kasirFilter = null;
+
+if (!$__isAdmin) {
+    // Operator wajib punya branch di session; kalau tidak ada, paksa ke login
+    // daripada tidak sengaja nampilin data gabungan semua cabang.
+    if (empty($_SESSION['branch'])) {
+        header('Location: ../../index.php');
+        exit;
+    }
+    $kasirFilter = $_SESSION['branch'];
+}
+
 // ==== Nama hari & bulan Indonesia (untuk format tanggal tanpa ekstensi intl) ====
 $__hari  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 $__bulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -36,12 +52,17 @@ $sql = "SELECT
         FROM transaksi t
         INNER JOIN transaksi_detail td ON td.id_transaksi = t.id_transaksi
         LEFT JOIN db_draft_barang.barang b ON b.id_barang = td.id_barang
-        WHERE DATE(t.tanggal) BETWEEN ? AND ?
+        WHERE DATE(t.tanggal) BETWEEN ? AND ?"
+        . ($kasirFilter !== null ? " AND LOWER(t.kasir) = LOWER(?)" : "") . "
         GROUP BY DATE(t.tanggal), td.id_barang
         ORDER BY DATE(t.tanggal) DESC, nama_barang ASC";
 
 $stmt = mysqli_prepare($koneksi_kasir, $sql);
-mysqli_stmt_bind_param($stmt, "ss", $tgl_awal, $tgl_akhir);
+if ($kasirFilter !== null) {
+    mysqli_stmt_bind_param($stmt, "sss", $tgl_awal, $tgl_akhir, $kasirFilter);
+} else {
+    mysqli_stmt_bind_param($stmt, "ss", $tgl_awal, $tgl_akhir);
+}
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
@@ -338,7 +359,11 @@ function formatQty($qty) {
     <div class="page-header">
         <div>
             <h1>Rekap Laba Kotor Stok Barang</h1>
-            <p>Laba kotor dihitung per barang berdasarkan seluruh transaksi penjualan, dikelompokkan per tanggal.</p>
+            <p>Laba kotor dihitung per barang berdasarkan seluruh transaksi penjualan, dikelompokkan per tanggal.
+                <?php if (!$__isAdmin) : ?>
+                    · Cabang <?= htmlspecialchars(ucfirst($kasirFilter)) ?>
+                <?php endif; ?>
+            </p>
         </div>
     </div>
 

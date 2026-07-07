@@ -24,11 +24,27 @@ session_start();
 require_once __DIR__ . '/../../database/koneksi.php';
 require_once __DIR__ . '/stok-fungsi.php';
 
-// TODO: tambahkan pengecekan login/session di sini jika belum ada,
-// contoh: if (!isset($_SESSION['branch'])) { header('Location: /index.php'); exit; }
+// Wajib login. Kalau belum login sama sekali, lempar ke halaman login.
+if (!isset($_SESSION['role'])) {
+    header('Location: /index.php');
+    exit;
+}
+
+// Operator hanya boleh melihat stok cabangnya sendiri; admin melihat semua cabang.
+if ($_SESSION['role'] === 'operator') {
+    // Kalau operator tapi somehow branch belum ke-set di session, jangan tampilkan
+    // stok cabang manapun -- paksa ulang ke halaman login daripada bocor lokasi lain.
+    if (empty($_SESSION['branch'])) {
+        header('Location: /index.php');
+        exit;
+    }
+    $lokasi_filter = $_SESSION['branch'];
+} else {
+    $lokasi_filter = null; // admin: tidak difilter, semua lokasi tampil
+}
 
 jalankan_rollover_bulanan($koneksi_mbg, $koneksi_kasir);
-$daftar_stok = ambil_data_stok($koneksi_mbg, $koneksi_kasir, $koneksi_draft);
+$daftar_stok = ambil_data_stok($koneksi_mbg, $koneksi_kasir, $koneksi_draft, $lokasi_filter);
 
 // Ringkasan status verifikasi untuk kartu kecil di atas tabel
 $total_barang   = count($daftar_stok);
@@ -102,6 +118,9 @@ $label_periode = $nama_bulan[(int) $bulan_aktif] . ' ' . $tahun_aktif;
                 <p>Daftar stok barang beserta verifikasi faktual periode berjalan.</p>
             </div>
             <span class="stok-periode-badge">Periode <?= htmlspecialchars($label_periode) ?></span>
+            <?php if ($_SESSION['role'] === 'operator') : ?>
+                <span class="stok-periode-badge">Cabang <?= htmlspecialchars(ucfirst($_SESSION['branch'])) ?></span>
+            <?php endif; ?>
         </div>
 
         <div class="stok-ringkasan">
