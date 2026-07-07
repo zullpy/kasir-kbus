@@ -7,10 +7,15 @@ session_start();
  * For now it only demonstrates the expected flow.
  *
  * Operator has 3 branch accounts (sodonghilir, sariwangi, manonjaya),
- * each with its own password. Admin has a single password.
+ * each with its own password.
+ * Admin has 3 sub-akses (admin, ketua, bendahara), each with its own password.
  */
 $validPasswords = [
-    'admin' => 'admin123',
+    'admin' => [
+        'admin'     => 'admin123',
+        'ketua'     => 'ketua123',
+        'bendahara' => 'bendahara123',
+    ],
     'operator' => [
         'sodonghilir' => 'sodong123',
         'sariwangi'   => 'sariwangi123',
@@ -23,12 +28,21 @@ $errorRole = '';
 $errorBranch = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['password'])) {
-    $role     = $_POST['role'] === 'admin' ? 'admin' : 'operator';
-    $password = $_POST['password'];
-    $branch   = isset($_POST['branch']) ? $_POST['branch'] : '';
+    $role      = $_POST['role'] === 'admin' ? 'admin' : 'operator';
+    $password  = $_POST['password'];
+    $branch    = isset($_POST['branch']) ? $_POST['branch'] : '';
+    $adminRole = ''; // akan diisi otomatis berdasarkan password yang cocok
 
     if ($role === 'admin') {
-        $isValid = $password === $validPasswords['admin'];
+        // Cari tahu password ini cocok dengan akses yang mana (admin/ketua/bendahara).
+        $isValid = false;
+        foreach ($validPasswords['admin'] as $key => $pass) {
+            if ($password === $pass) {
+                $isValid   = true;
+                $adminRole = $key;
+                break;
+            }
+        }
     } else {
         $isValid = isset($validPasswords['operator'][$branch]) && $password === $validPasswords['operator'][$branch];
     }
@@ -37,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['passw
         $_SESSION['role'] = $role;
         if ($role === 'operator') {
             $_SESSION['branch'] = $branch;
+        } else {
+            $_SESSION['admin_role'] = $adminRole; // admin / ketua / bendahara, dipakai nanti untuk tanda tangan sesuai role
         }
         header('Location: ' . ($role === 'admin' ? 'operator/riwayat/riwayat-transaksi.php' : 'operator/index.php'));
         exit;
@@ -153,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['role'], $_POST['passw
                 </div>
             </div>
 
-            <!-- Password section (revealed after branch chosen, or immediately for admin) -->
+            <!-- Password section (revealed after branch/akses chosen) -->
             <div class="pass-section" id="passSection">
                 <label class="field-label" for="modalPassword">Password</label>
                 <div class="pass-wrap">

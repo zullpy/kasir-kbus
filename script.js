@@ -33,7 +33,7 @@ const subEl = document.getElementById('modalSub');
 const roleInput = document.getElementById('modalRoleInput');
 const branchInput = document.getElementById('modalBranchInput');
 const branchSelect = document.getElementById('branchSelect');
-const branchOpts = document.querySelectorAll('.branch-opt');
+const branchOpts = document.querySelectorAll('.branch-opt[data-branch]');
 const kasirProfile = document.getElementById('kasirProfile');
 const kasirPhoto = document.getElementById('kasirPhoto');
 const kasirName = document.getElementById('kasirName');
@@ -81,6 +81,8 @@ function openModal(role) {
         passSection.classList.remove('is-visible');
         submitBtn.disabled = true;
     } else {
+        // Admin: langsung tampil password, tanpa pilihan apapun.
+        // Akses (admin/ketua/bendahara) ditentukan otomatis di server dari password mana yang cocok.
         branchSelect.classList.remove('is-visible');
         passSection.classList.add('is-visible');
         submitBtn.disabled = false;
