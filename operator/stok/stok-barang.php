@@ -38,7 +38,14 @@ if ($_SESSION['role'] === 'operator') {
         header('Location: /index.php');
         exit;
     }
-    $lokasi_filter = $_SESSION['branch'];
+    // Mapping nilai session branch ke nilai kolom `lokasi` yang sebenarnya di DB.
+    // (sama dengan mapping di api/get-products.php)
+    $lokasiMap = [
+        'sodonghilir' => 'sodong',
+        'sariwangi'   => 'sariwangi',
+        'manonjaya'   => 'manonjaya',
+    ];
+    $lokasi_filter = $lokasiMap[$_SESSION['branch']] ?? $_SESSION['branch'];
 } else {
     $lokasi_filter = null; // admin: tidak difilter, semua lokasi tampil
 }
@@ -119,7 +126,7 @@ $label_periode = $nama_bulan[(int) $bulan_aktif] . ' ' . $tahun_aktif;
             </div>
             <span class="stok-periode-badge">Periode <?= htmlspecialchars($label_periode) ?></span>
             <?php if ($_SESSION['role'] === 'operator') : ?>
-                <span class="stok-periode-badge">Cabang <?= htmlspecialchars(ucfirst($_SESSION['branch'])) ?></span>
+                <span class="stok-periode-badge">Cabang <?= htmlspecialchars(ucfirst($lokasi_filter ?? $_SESSION['branch'])) ?></span>
             <?php endif; ?>
         </div>
 
