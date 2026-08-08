@@ -45,13 +45,9 @@ $sql = "SELECT
             DATE(t.tanggal) AS tgl,
             td.id_barang,
             MAX(td.nama_barang) AS nama_barang,
-            SUM(td.qty) AS total_qty,
-            TRIM(b.satuan) AS satuan,
-            CAST(REPLACE(REPLACE(b.harga_beli,'.',''),',','') AS DECIMAL(14,2)) AS harga_beli_satuan,
-            CAST(b.harga_jual AS DECIMAL(14,2)) AS harga_jual_satuan
+            SUM(td.qty) AS total_qty
         FROM transaksi t
         INNER JOIN transaksi_detail td ON td.id_transaksi = t.id_transaksi
-        LEFT JOIN db_draft_barang.barang b ON b.id_barang = td.id_barang
         WHERE DATE(t.tanggal) BETWEEN ? AND ?"
         . ($kasirFilter !== null ? " AND LOWER(t.kasir) = LOWER(?)" : "") . "
         GROUP BY DATE(t.tanggal), td.id_barang
@@ -73,12 +69,28 @@ $grand_beli = 0;
 $grand_jual = 0;
 $grand_laba = 0;
 
+// Ambil data harga & satuan barang dari db_draft_barang (pakai $koneksi_draft)
+$barangLookup = [];
+$resBarang = mysqli_query($koneksi_draft, "
+    SELECT id_barang, TRIM(satuan) AS satuan,
+           CAST(REPLACE(REPLACE(harga_beli,'.',''),',','') AS DECIMAL(14,2)) AS harga_beli_satuan,
+           CAST(harga_jual AS DECIMAL(14,2)) AS harga_jual_satuan
+    FROM barang
+");
+if ($resBarang) {
+    while ($rb = mysqli_fetch_assoc($resBarang)) {
+        $barangLookup[$rb['id_barang']] = $rb;
+    }
+}
+
 while ($row = mysqli_fetch_assoc($result)) {
     $tgl        = $row['tgl'];
     $qty        = (float) $row['total_qty'];
-    $harga_beli_satuan = (float) $row['harga_beli_satuan'];
-    $harga_jual_satuan = (float) $row['harga_jual_satuan'];
 
+    $infoBarang = $barangLookup[$row['id_barang']] ?? null;
+    $harga_beli_satuan = $infoBarang ? (float) $infoBarang['harga_beli_satuan'] : 0;
+    $harga_jual_satuan = $infoBarang ? (float) $infoBarang['harga_jual_satuan'] : 0;
+    $satuan            = $infoBarang ? $infoBarang['satuan'] : null;
     $total_beli = $harga_beli_satuan * $qty;
     $total_jual = $harga_jual_satuan * $qty;
     $laba_item  = $total_jual - $total_beli;
@@ -86,7 +98,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $laporan[$tgl][] = [
         'nama_barang' => $row['nama_barang'],
         'qty'         => $qty,
-        'satuan'      => $row['satuan'] ?: '-',
+        'satuan'      => $satuan ?: '-',
         'total_beli'  => $total_beli,
         'total_jual'  => $total_jual,
         'laba'        => $laba_item,

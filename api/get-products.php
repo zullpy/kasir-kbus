@@ -27,30 +27,30 @@ $lokasiMap = [
 $lokasi = $lokasiMap[$lokasi] ?? $lokasi;
 
 if ($lokasi === '') {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Lokasi cabang tidak ditemukan di sesi. Silakan login ulang.',
-    ]);
-    exit;
+    // Default lokasi ke 'sodong' jika session branch kosong (misal login sebagai admin)
+    $lokasi = 'sodong';
 }
 
+// 1. Ambil data harga, kategori, & isi_per_satuan dari db_draft_barang (via $koneksi_draft)
+$petaBarang = [];
+$resBarang = mysqli_query($koneksi_draft, "SELECT nama_barang, harga_jual, harga_jual_eceran, kategori, isi_per_satuan FROM barang");
+if ($resBarang) {
+    while ($b = mysqli_fetch_assoc($resBarang)) {
+        $kunci = strtolower(trim(preg_replace('/\s+/', ' ', $b['nama_barang'])));
+        $petaBarang[$kunci] = $b;
+    }
+}
+
+// 2. Ambil data stok dari db_mbg.stok_barang (via $koneksi_mbg)
 $query = "
     SELECT
-        ROW_NUMBER() OVER (ORDER BY gs.nama_barang ASC) AS id,
-        gs.nama_barang                                   AS name,
-        gs.satuan                                        AS satuan,
-        gs.satuan_eceran                                  AS satuan_eceran,
-        gs.qty_eceran                                     AS qty_eceran,
-        COALESCE(b.harga_jual, 0)                        AS price,
-        COALESCE(b.harga_jual_eceran, 0)                 AS price_eceran,
-        COALESCE(b.kategori, 'Umum')                     AS category,
-        b.isi_per_satuan                                 AS isi_per_satuan
-    FROM stok_barang gs
-    LEFT JOIN db_draft_barang.barang b
-        ON gs.nama_barang COLLATE utf8mb4_unicode_ci = b.nama_barang COLLATE utf8mb4_unicode_ci
-    WHERE gs.lokasi = ?
-    ORDER BY gs.nama_barang ASC
+        nama_barang,
+        satuan,
+        satuan_eceran,
+        qty_eceran
+    FROM stok_barang
+    WHERE LOWER(lokasi) = LOWER(?)
+    ORDER BY nama_barang ASC
 ";
 
 $stmt = mysqli_prepare($koneksi_mbg, $query);
@@ -78,26 +78,32 @@ if (!$result) {
 }
 
 $products = [];
+$idCounter = 1;
 while ($row = mysqli_fetch_assoc($result)) {
-    $totalEceran  = (float) $row['qty_eceran'];
-    $isiPerSatuan = $row['isi_per_satuan'] !== null ? (int) $row['isi_per_satuan'] : 0;
+    $kunci = strtolower(trim(preg_replace('/\s+/', ' ', $row['nama_barang'])));
+    $infoBarang = $petaBarang[$kunci] ?? null;
+
+    $price        = (float) ($infoBarang['harga_jual'] ?? 0);
+    $price_eceran = (float) ($infoBarang['harga_jual_eceran'] ?? 0);
+    $category     = $infoBarang['kategori'] ?? 'Umum';
+    $isiPerSatuan = isset($infoBarang['isi_per_satuan']) ? (int) $infoBarang['isi_per_satuan'] : 1;
     $isiPerSatuan = $isiPerSatuan > 0 ? $isiPerSatuan : 1;
 
+    $totalEceran  = (float) $row['qty_eceran'];
+
     // "stock" (kartu grosir) = jumlah dus UTUH yang bisa dijual grosir.
-    // Sisa pcs yang belum cukup 1 dus tidak dihitung di sini.
     $stockGrosir = stokTersediaGrosir($totalEceran, $isiPerSatuan);
-    // "stock_eceran" (kartu eceran) = seluruh total_eceran, karena dus utuh
-    // pun bisa dipecah buat dijual satuan kecil.
+    // "stock_eceran" (kartu eceran) = seluruh total_eceran, karena dus utuh pun bisa dipecah
     $stockEceran = stokTersediaEceran($totalEceran);
 
     $products[] = [
-        'id'             => (int)   $row['id'],
-        'name'           => $row['name'],
-        'price'          => (float) $row['price'],
-        'price_eceran'   => (float) $row['price_eceran'],
+        'id'             => $idCounter++,
+        'name'           => $row['nama_barang'],
+        'price'          => $price,
+        'price_eceran'   => $price_eceran,
         'stock'          => (int)   $stockGrosir,
         'stock_eceran'   => (int)   $stockEceran,
-        'category'       => $row['category'],
+        'category'       => $category,
         'satuan'         => $row['satuan'] ?? 'pcs',
         'satuan_eceran'  => $row['satuan_eceran'],
         'isi_per_satuan' => $isiPerSatuan > 1 ? $isiPerSatuan : null,

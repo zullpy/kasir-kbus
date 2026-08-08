@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // sesuai mode aktif. Satu barang bisa menghasilkan 1 atau 2 item tampilan.
     function buildDisplayItems() {
         const items = [];
+        if (!Array.isArray(rawProducts)) return items;
 
         rawProducts.forEach((p) => {
             // Stok grosir & eceran independen (masing-masing dari tabel stok_barang
@@ -280,10 +281,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function refreshProducts() {
         try {
             const res = await fetch('../api/get-products.php');
-            rawProducts = await res.json();
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                rawProducts = data;
+            } else {
+                console.error('Data produk dari API tidak berupa array:', data);
+                rawProducts = [];
+            }
             renderProducts();
         } catch (err) {
             console.error('Gagal memuat ulang data produk:', err);
+            rawProducts = [];
+            renderProducts();
         }
     }
 
