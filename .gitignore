@@ -13,8 +13,10 @@ config.local.php
 # ============================================================
 # UPLOAD & STORAGE
 # ============================================================
-uploads/
-storage/
+# Uploads — push struktur folder saja, bukan isinya
+uploads/**
+!uploads/**/
+!uploads/**/.gitkeep
 
 # ============================================================
 # LOG & CACHE
