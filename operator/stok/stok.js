@@ -124,7 +124,32 @@
                 if (data.success) {
                     tutupModal();
                     tampilkanToast(data.message || 'Verifikasi berhasil disimpan.', false);
-                    setTimeout(function () { window.location.reload(); }, 700);
+                    
+                    // Update tampilan baris di tabel secara langsung tanpa reload
+                    var tombol = document.querySelector('.btn-verifikasi[data-verifikasi-id="' + inputVerifikasiId.value + '"]');
+                    if (tombol) {
+                        tombol.dataset.statusSaatIni = statusTerpilih;
+                        tombol.dataset.keteranganSaatIni = (statusTerpilih === 'tidak_sesuai' ? keterangan : '');
+                        tombol.dataset.qtyFisikSaatIni = (statusTerpilih === 'tidak_sesuai' ? qtyFisik : '');
+
+                        var tr = tombol.closest('tr');
+                        if (tr) {
+                            var badge = tr.querySelector('.badge');
+                            if (badge) {
+                                if (statusTerpilih === 'sesuai') {
+                                    badge.className = 'badge badge-sesuai';
+                                    badge.textContent = 'Sesuai';
+                                } else if (statusTerpilih === 'tidak_sesuai') {
+                                    badge.className = 'badge badge-tidak-sesuai';
+                                    badge.textContent = 'Tidak Sesuai';
+                                }
+                            }
+                            var colKet = tr.querySelector('.col-keterangan');
+                            if (colKet) {
+                                colKet.textContent = (statusTerpilih === 'tidak_sesuai' && keterangan) ? keterangan : '-';
+                            }
+                        }
+                    }
                 } else {
                     tampilkanError(data.message || 'Gagal menyimpan verifikasi.');
                 }

@@ -164,7 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnSimpan.disabled = false;
                 if (json.ok) {
                     setMsg('Tersimpan!', 'ok');
-                    setTimeout(() => window.location.reload(), 500);
+                    // Update tombol tanda tangan di baris tabel secara langsung tanpa reload
+                    const btnTtd = document.querySelector(`.btn-ttd[data-tanggal="${currentTanggal}"][data-cabang="${currentCabang}"]`);
+                    if (btnTtd) {
+                        btnTtd.textContent = 'Ubah Tanda Tangan';
+                        btnTtd.dataset.signature = signature;
+                        btnTtd.dataset.nama = nama;
+                    }
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                        setMsg('', '');
+                    }, 600);
                 } else {
                     setMsg(json.error || 'Gagal menyimpan.', 'error');
                 }
