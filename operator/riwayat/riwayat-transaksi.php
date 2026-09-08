@@ -248,7 +248,7 @@ function formatRupiahPhp($n)
                                                             <tr>
                                                                 <td><?= htmlspecialchars($item['nama_barang']) ?></td>
                                                                 <td>
-                                                                    <?= (int) $item['qty'] ?><?= $satuanLabel ? ' ' . htmlspecialchars($satuanLabel) : '' ?>
+                                                                    <?= rtrim(rtrim((string)(float)$item['qty'], '0'), '.') ?><?= $satuanLabel ? ' ' . htmlspecialchars($satuanLabel) : '' ?>
                                                                     x <?= formatRupiahPhp($item['harga']) ?>
                                                                 </td>
                                                                 <td style="text-align:right;"><?= formatRupiahPhp($item['subtotal']) ?></td>
