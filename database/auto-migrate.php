@@ -3,9 +3,15 @@
 // AUTO DATABASE MIGRATION RUNNER (mysqli) - Aplikasi Kasir
 // =========================================================================
 
+// Standarisasi zona waktu ke WIB (Asia/Jakarta)
+date_default_timezone_set('Asia/Jakarta');
+
 function runAutoMigrationsKasir($db, $dbNameLabel = 'db1')
 {
     if (!$db || !($db instanceof mysqli) || $db->connect_error) return;
+
+    // Pastikan session MySQL berjalan di zona waktu WIB (+07:00)
+    @$db->query("SET time_zone = '+07:00'");
 
     // 1. Buat tabel schema_migrations jika belum ada
     $createTable = "CREATE TABLE IF NOT EXISTS schema_migrations (

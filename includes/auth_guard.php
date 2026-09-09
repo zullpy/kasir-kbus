@@ -4,6 +4,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+date_default_timezone_set('Asia/Jakarta');
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'operator' && $_SESSION['role'] !== 'admin') {
     // Hitung berapa level folder dari root berdasarkan path file, bukan jumlah '/' mentah.
