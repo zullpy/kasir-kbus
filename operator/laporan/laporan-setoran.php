@@ -2,6 +2,7 @@
 // laporan-setoran.php
 session_start();
 require_once __DIR__ . '/../../database/koneksi.php'; // sesuaikan path ke koneksi.php
+require_once __DIR__ . '/../../database/cloudinary_helper.php';
 
 $__role = $_SESSION['role'] ?? '';
 $__isAdmin = $__role === 'admin';
@@ -38,8 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi']) && $_POST['ak
             $ext = strtolower(pathinfo($_FILES['bukti_tf']['name'], PATHINFO_EXTENSION));
             $allowedExt = ['jpg', 'jpeg', 'png', 'pdf'];
             if (in_array($ext, $allowedExt)) {
-                $namaBukti = 'bukti_' . $cabang . '_' . date('Ymd_His') . '.' . $ext;
-                move_uploaded_file($_FILES['bukti_tf']['tmp_name'], $dirBukti . $namaBukti);
+                try {
+                    $namaBukti = smart_upload_foto($_FILES['bukti_tf'], 'bukti', $dirBukti, 'bukti_' . $cabang);
+                } catch (Exception $e) {
+                    $error = 'Gagal mengunggah bukti transfer: ' . $e->getMessage();
+                }
             } else {
                 $error = 'Format bukti transfer harus JPG, PNG, atau PDF.';
             }
@@ -50,16 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi']) && $_POST['ak
         // --- Simpan tanda tangan (base64 dari canvas) ---
         $namaTtd = null;
         if (empty($error) && !empty($_POST['tanda_tangan_data'])) {
-            $data = $_POST['tanda_tangan_data'];
-            if (preg_match('/^data:image\/(png|jpeg);base64,/', $data, $m)) {
-                $data = substr($data, strpos($data, ',') + 1);
-                $data = base64_decode($data);
-                if ($data !== false) {
-                    $namaTtd = 'ttd_' . $cabang . '_' . date('Ymd_His') . '.png';
-                    file_put_contents($dirTtd . $namaTtd, $data);
-                }
-            } else {
-                $error = 'Tanda tangan kasir wajib diisi.';
+            try {
+                $namaTtd = smart_upload_base64($_POST['tanda_tangan_data'], 'ttd', $dirTtd, 'ttd_' . $cabang);
+            } catch (Exception $e) {
+                $error = 'Gagal menyimpan tanda tangan: ' . $e->getMessage();
             }
         } elseif (empty($error)) {
             $error = 'Tanda tangan kasir wajib diisi.';
@@ -230,13 +228,13 @@ if ($__isAdmin) {
                                     <td>
                                         <?php if ($row['bukti_tf']): ?>
                                             <a class="link-file" target="_blank"
-                                               href="../../uploads/bukti/<?= htmlspecialchars($row['bukti_tf']) ?>">Lihat</a>
+                                               href="<?= htmlspecialchars(resolve_photo_url($row['bukti_tf'], '../../uploads/bukti/')) ?>">Lihat</a>
                                         <?php else: ?>—<?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($row['tanda_tangan']): ?>
                                             <a class="link-file" target="_blank"
-                                               href="../../uploads/ttd/<?= htmlspecialchars($row['tanda_tangan']) ?>">Lihat</a>
+                                               href="<?= htmlspecialchars(resolve_photo_url($row['tanda_tangan'], '../../uploads/ttd/')) ?>">Lihat</a>
                                         <?php else: ?>—<?php endif; ?>
                                     </td>
                                     <td>

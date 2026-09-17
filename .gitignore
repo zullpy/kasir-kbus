@@ -2,8 +2,9 @@
 # FILE SENSITIF — JANGAN DI-COMMIT
 # ============================================================
 
-# Koneksi database (berisi kredensial)
+# Koneksi database & API (berisi kredensial)
 database/koneksi.php
+database/cloudinary.php
 
 # Environment & konfigurasi lokal
 .env
