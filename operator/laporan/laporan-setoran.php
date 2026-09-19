@@ -175,6 +175,115 @@ if ($__isAdmin) {
     .modal-box-header h2 { margin:0; }
     .btn-close-modal { background:none; border:none; font-size: 20px; line-height:1; color:#9aa1ae; cursor:pointer; padding:2px 6px; }
     .btn-close-modal:hover { color:#374151; }
+
+    /* Modal Preview Persis Dompet Harian (100% Identik) */
+    .modal-overlay-dompet {
+        position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        background: rgba(15, 23, 42, 0.6) !important; backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important; z-index: 99999 !important;
+        display: none; align-items: center !important; justify-content: center !important;
+        padding: 1rem !important; box-sizing: border-box !important;
+    }
+    .modal-overlay-dompet.active,
+    .modal-overlay-dompet[style*="display: flex"] {
+        display: flex !important;
+    }
+    .modal-dompet {
+        background: #ffffff !important; border-radius: 16px !important; width: 95vw !important;
+        max-width: 640px !important; max-height: calc(100vh - 40px) !important;
+        display: flex !important; flex-direction: column !important; overflow: hidden !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        animation: modalInDompet 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        position: relative !important; padding: 0 !important; border: none !important; margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+    @keyframes modalInDompet {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-dompet .modal-header {
+        display: flex !important; align-items: center !important; justify-content: space-between !important;
+        padding: 1.25rem 1.5rem !important; background: linear-gradient(135deg, #2563a8 0%, #4a9fd4 100%) !important;
+        border-radius: 16px 16px 0 0 !important; flex-shrink: 0 !important; z-index: 10 !important;
+        margin: 0 !important; border: none !important; width: 100% !important; box-sizing: border-box !important;
+    }
+    .modal-dompet .modal-header-left { display: flex !important; align-items: center !important; gap: 0.75rem !important; }
+    .modal-dompet .modal-header-icon {
+        width: 36px !important; height: 36px !important; display: flex !important; align-items: center !important;
+        justify-content: center !important; background: rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important; flex-shrink: 0 !important;
+    }
+    .modal-dompet .modal-title {
+        font-size: 1rem !important; font-weight: 700 !important; color: #ffffff !important;
+        font-family: inherit !important; margin: 0 !important; letter-spacing: normal !important;
+    }
+    .modal-dompet .modal-close {
+        width: 34px !important; height: 34px !important; display: flex !important; align-items: center !important;
+        justify-content: center !important; background: rgba(255, 255, 255, 0.12) !important;
+        border: none !important; border-radius: 8px !important; cursor: pointer !important;
+        transition: all 0.2s ease !important; color: #ffffff !important; padding: 0 !important;
+    }
+    .modal-dompet .modal-close:hover { background: rgba(255, 255, 255, 0.22) !important; }
+    .modal-dompet .nota-modal-body {
+        display: flex !important; flex-direction: column !important; gap: 1.25rem !important;
+        max-height: 65vh !important; overflow-y: auto !important; padding: 1.25rem 1.5rem !important;
+        background: #ffffff !important; margin: 0 !important; box-sizing: border-box !important;
+    }
+    .modal-dompet .nota-preview-item {
+        display: flex !important; flex-direction: column !important; gap: 0.65rem !important;
+        background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 12px !important;
+        padding: 1rem !important; box-sizing: border-box !important;
+    }
+    .modal-dompet .nota-preview-label {
+        display: flex !important; align-items: center !important; gap: 0.4rem !important;
+        font-size: 0.8rem !important; font-weight: 700 !important; color: #2563eb !important;
+        text-transform: uppercase !important; letter-spacing: 0.4px !important;
+    }
+    .modal-dompet .nota-preview-img {
+        width: 100% !important; max-height: 420px !important; object-fit: contain !important;
+        border-radius: 8px !important; border: 1px solid #e2e8f0 !important; background: #ffffff !important;
+        cursor: zoom-in !important; transition: opacity 0.2s !important; display: block !important; margin: 0 auto !important;
+    }
+    .modal-dompet .nota-preview-img:hover { opacity: 0.9 !important; }
+    .modal-dompet .nota-preview-pdf-wrap {
+        width: 100% !important; height: 420px !important; border-radius: 8px !important;
+        overflow: hidden !important; border: 1px solid #e2e8f0 !important;
+    }
+    .modal-dompet .nota-preview-pdf { width: 100% !important; height: 100% !important; border: none !important; }
+    .modal-dompet .btn-delete-nota {
+        display: inline-flex !important; align-items: center !important; gap: 6px !important;
+        padding: 6px 12px !important; background: #fef2f2 !important; color: #ef4444 !important;
+        border: 1px solid #fee2e2 !important; border-radius: 6px !important; font-size: 12px !important;
+        font-weight: 600 !important; cursor: pointer !important; transition: all 0.15s ease !important;
+        width: auto !important;
+    }
+    .modal-dompet .btn-delete-nota:hover { background: #fee2e2 !important; color: #dc2626 !important; }
+    .modal-dompet .modal-footer {
+        display: flex !important; align-items: center !important; justify-content: flex-end !important;
+        gap: 0.6rem !important; padding: 1rem 1.5rem 1.25rem !important; background: #ffffff !important;
+        border-top: 1px solid #e2e8f0 !important; flex-shrink: 0 !important; border-radius: 0 0 16px 16px !important;
+        z-index: 10 !important; margin: 0 !important; box-sizing: border-box !important;
+    }
+    .modal-dompet .btn-cancel {
+        height: 40px !important; padding: 0 1.2rem !important; border: 1.5px solid #e2e8f0 !important;
+        background: #ffffff !important; border-radius: 8px !important; font-size: 0.87rem !important;
+    .modal-dompet .btn-cancel:hover { background: #f8fafc !important; border-color: #cbd5e1 !important; color: #1e293b !important; }
+
+    /* SweetAlert2 Theme Persis Dompet Harian & Di Depan Modal */
+    .swal2-container {
+        z-index: 99999999 !important;
+    }
+    .swal-kopdes {
+        border-radius: 16px !important; font-family: inherit !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important; padding: 1.8rem !important;
+    }
+    .swal-kopdes .swal2-title { font-size: 1.15rem !important; font-weight: 700 !important; color: #1e293b !important; }
+    .swal-kopdes .swal2-html-container,
+    .swal-kopdes .swal2-content { font-size: 0.875rem !important; color: #64748b !important; }
+    .swal-kopdes .swal2-confirm,
+    .swal-kopdes .swal2-cancel {
+        border-radius: 8px !important; font-size: 0.85rem !important; font-weight: 600 !important; padding: 0.5rem 1.2rem !important;
+    }
 </style>
 </head>
 <body>
@@ -225,16 +334,16 @@ if ($__isAdmin) {
                                     <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
                                     <td>Rp <?= number_format($row['saldo_kasir'], 0, ',', '.') ?></td>
                                     <td>Rp <?= number_format($row['setoran_koperasi'], 0, ',', '.') ?></td>
-                                    <td>
+                                    <td id="cell-bukti-<?= $row['id'] ?>">
                                         <?php if ($row['bukti_tf']): ?>
-                                            <a class="link-file" target="_blank"
-                                               href="<?= htmlspecialchars(resolve_photo_url($row['bukti_tf'], '../../uploads/bukti/')) ?>">Lihat</a>
+                                            <a class="link-file" href="javascript:void(0)"
+                                               onclick="openPreviewBuktiSetoran('<?= htmlspecialchars(resolve_photo_url($row['bukti_tf'], '../../uploads/bukti/')) ?>', <?= (int)$row['id'] ?>, 'bukti_tf', '<?= htmlspecialchars($row['cabang'], ENT_QUOTES) ?>', '<?= date('d/m/Y', strtotime($row['tanggal'])) ?>')">Lihat</a>
                                         <?php else: ?>—<?php endif; ?>
                                     </td>
-                                    <td>
+                                    <td id="cell-ttd-<?= $row['id'] ?>">
                                         <?php if ($row['tanda_tangan']): ?>
-                                            <a class="link-file" target="_blank"
-                                               href="<?= htmlspecialchars(resolve_photo_url($row['tanda_tangan'], '../../uploads/ttd/')) ?>">Lihat</a>
+                                            <a class="link-file" href="javascript:void(0)"
+                                               onclick="openPreviewBuktiSetoran('<?= htmlspecialchars(resolve_photo_url($row['tanda_tangan'], '../../uploads/ttd/')) ?>', <?= (int)$row['id'] ?>, 'tanda_tangan', '<?= htmlspecialchars($row['cabang'], ENT_QUOTES) ?>', '<?= date('d/m/Y', strtotime($row['tanggal'])) ?>')">Lihat</a>
                                         <?php else: ?>—<?php endif; ?>
                                     </td>
                                     <td>
@@ -414,6 +523,159 @@ bukaModalSetoran();
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
         });
     }
+</script>
+
+<!-- MODAL PREVIEW BUKTI SETORAN PERSIS SEPERTI DOMPET HARIAN -->
+<div id="setoranPreviewModal" class="modal-overlay-dompet" style="display:none;">
+    <div class="modal-dompet">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <div class="modal-header-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="1" y="2.5" width="16" height="13" rx="1.5" stroke="#fff" stroke-width="1.5" />
+                        <circle cx="5.5" cy="8" r="1.5" fill="#fff" />
+                        <path d="M1 15l5-5 3 3 2.5-2.5L17 15" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="modal-title" id="setoranPreviewTitle">Bukti Transfer Setoran</div>
+            </div>
+            <button type="button" class="modal-close" onclick="closePreviewSetoran()" aria-label="Tutup">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+            </button>
+        </div>
+        <div class="nota-modal-body" id="setoranPreviewBody"></div>
+        <div class="modal-footer">
+            <button type="button" onclick="closePreviewSetoran()" class="btn-cancel">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function closePreviewSetoran() {
+    const modal = document.getElementById('setoranPreviewModal');
+    if (modal) modal.style.display = 'none';
+    const body = document.getElementById('setoranPreviewBody');
+    if (body) body.innerHTML = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('setoranPreviewModal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closePreviewSetoran();
+        });
+    }
+});
+
+function openPreviewBuktiSetoran(url, id, type, cabang, tanggal) {
+    if (!url) return;
+    const modal = document.getElementById('setoranPreviewModal');
+    const title = document.getElementById('setoranPreviewTitle');
+    const body = document.getElementById('setoranPreviewBody');
+    if (!modal || !body) return;
+
+    const isBuktiTf = (type === 'bukti_tf');
+    const labelTitle = isBuktiTf ? `Bukti Transfer — ${cabang || 'Setoran'} (${tanggal || ''})` : `Tanda Tangan — ${cabang || 'Setoran'} (${tanggal || ''})`;
+    if (title) title.textContent = labelTitle;
+
+    const isPdf = url.toLowerCase().split('?')[0].endsWith('.pdf');
+    const labelBtn = isBuktiTf ? 'Hapus Bukti' : 'Hapus TTD';
+    const itemLabel = isBuktiTf ? 'Bukti Transfer' : 'Tanda Tangan';
+
+    body.innerHTML = `
+        <div class="nota-preview-item">
+            <div class="nota-preview-label">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <rect x="1" y="2" width="12" height="10" rx="1.2" stroke="currentColor" stroke-width="1.4"/>
+                    <circle cx="4.5" cy="6" r="1.2" fill="currentColor"/>
+                    <path d="M1 12l4-4 2.5 2.5 2-2L13 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                ${itemLabel}
+            </div>
+            ${isPdf 
+                ? `<div class="nota-preview-pdf-wrap"><embed src="${url}" type="application/pdf" class="nota-preview-pdf"></div>`
+                : `<img src="${url}" alt="Preview" class="nota-preview-img" onclick="window.open('${url}', '_blank')">`
+            }
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="btn-delete-nota" onclick="hapusFileSetoran(${id}, '${type}', '${url}')">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M5.5 6v3.5M7.5 6v3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        <path d="M3 3.5l.7 7a.5.5 0 0 0 .5.5h4.6a.5.5 0 0 0 .5-.5l.7-7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    ${labelBtn}
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+async function hapusFileSetoran(id, type, url) {
+    const isBuktiTf = (type === 'bukti_tf');
+    const label = isBuktiTf ? 'Bukti Transfer' : 'Tanda Tangan';
+
+    const result = await Swal.fire({
+        title: `Hapus ${label}?`,
+        text: `File fisik ${label.toLowerCase()} di Cloudinary/server akan ikut terhapus permanen. Tindakan ini tidak dapat dibatalkan!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Permanen',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'swal-kopdes' },
+        didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '99999999';
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Menghapus...',
+        text: 'Sedang menghapus file fisik...',
+        allowOutsideClick: false,
+        customClass: { popup: 'swal-kopdes' },
+        didOpen: () => {
+            const container = document.querySelector('.swal2-container');
+            if (container) container.style.zIndex = '99999999';
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const res = await fetch('hapus-bukti-setoran.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, type: type })
+        });
+        const json = await res.json();
+        if (json.success) {
+            closePreviewSetoran();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Dihapus',
+                text: `File fisik ${label.toLowerCase()} telah dihapus.`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            // Update cell di tabel live tanpa reload
+            const cellId = isBuktiTf ? `cell-bukti-${id}` : `cell-ttd-${id}`;
+            const cell = document.getElementById(cellId);
+            if (cell) cell.innerHTML = '—';
+        } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: json.message || 'Terjadi kesalahan' });
+        }
+    } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+}
 </script>
 </body>
 </html>
